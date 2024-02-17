@@ -1,0 +1,14 @@
+Please turn the office light off. #command: turn office01 off#<|endoftext|>
+Turn the office light off. #command: turn office01 off#<|endoftext|>
+Can you turn the office light off. #command. turn office01 off#<|endoftext|>
+Would you be so kind to turn off the office light? #command: turn office01 off#<|endoftext|>
+Can you turn on the entrance light? #command: turn entrance01 on#<|endoftext|>
+Could you please turn on the entrance light? #command: turn entrance01 on#<|endoftext|>
+Would you be so kind to turn on the entrance light? #command: turn entrance01 on#<|endoftext|>
+Turn the entrance light off now. #command. turn entrance01 off#<|endoftext|>
+The entrance light is to be turned off. #command. turn entrance01 off#<|endoftext|>
+I command you to turn the entrance light off. #command. turn entrance01 off#<|endoftext|>
+Please turn the entrance light on. #command: turn entrance01 on#<|endoftext|>
+Can you turn the entrace light off? #command: turn entrance01 off#<|endoftext|>
+Can you turn the entrace light on? #command: turn entrance01 on#<|endoftext|>
+You would be awesome if you would turn the entrance light on? #command: turn entrance01 on#<|endoftext|>

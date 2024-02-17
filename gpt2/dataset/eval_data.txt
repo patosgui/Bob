@@ -1,0 +1,8 @@
+Turn the office light off. command: turn office01 off.
+Can you turn the office light off. command. turn office01 off.
+Would you be so kind to turn off the office light? command: turn office01 off
+Can you turn on the kitchen light? command: turn kitchen01 on.
+Turn on the kitchen light? command: turn kitchen01 on.
+Would you be so kind to turn on the kitchen light? command: turn kitchen01 on.
+Please turn the kitchen light on. command: turn kitchen01 on.
+Who was Sir Isaac Newtion? A scientist.
