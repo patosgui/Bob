@@ -12,3 +12,7 @@ evaluate>=0.4.1
 black>=24.2.0
 scikit_learn>=1.4.1
 accelerate>=0.27.2 
+phue>=1.1
+websockets>=12.0
+whisper-live
+

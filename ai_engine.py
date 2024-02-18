@@ -2,6 +2,7 @@ from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 from pathlib import Path
 
+
 from gpt2.gpt2 import GPT2Model
 
 

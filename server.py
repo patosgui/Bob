@@ -51,7 +51,7 @@ class CommandProcessor:
 
     async def start(self):
         server = TranscriptionServer(text_queue=text_queue)
-        thread = threading.Thread(target=server.run, args=("0.0.0.0", 5679))
+        thread = threading.Thread(target=server.run, args=("0.0.0.0", 5676))
         thread.start()
         self.debug.initializationOver()
 

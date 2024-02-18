@@ -38,7 +38,7 @@ class TranscriptionServer:
     def __init__(self, text_queue):
         # voice activity detection model
         self.vad_model = VoiceActivityDetection()
-        self.vad_threshold = 0.4
+        self.vad_threshold = 0.7
 
         self.clients = {}
         self.websockets = {}
@@ -143,6 +143,12 @@ class TranscriptionServer:
                     speech_prob = self.vad_model(
                         torch.from_numpy(frame_np.copy()), self.RATE
                     ).item()
+                    print(
+                        "PROB: "
+                        + str(speech_prob)
+                        + " CHUNK: "
+                        + str(len(frame_np))
+                    )
                     if speech_prob < self.vad_threshold:
                         if state == 1:
                             logging.info("Passing data to whisper thread")
@@ -157,6 +163,7 @@ class TranscriptionServer:
                     logging.error(e)
                     return
 
+                logging.info("VAD_TRESHOLD " + str(speech_prob))
                 if not state:
                     logging.info("Turning speech recognition on")
                 state = 1
@@ -484,6 +491,7 @@ class ServeClient:
         offset = None
         self.current_out = ""
         last_segment = None
+        segments = segments[0]
         # process complete segments
         if len(segments) > 1:
             for i, s in enumerate(segments[:-1]):
@@ -566,4 +574,3 @@ class ServeClient:
         """
         logging.info("Cleaning up.")
         self.exit = True
-        self.transcriber.destroy()
