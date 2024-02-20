@@ -1,4 +1,3 @@
-import websockets
 import time
 import threading
 import json
@@ -16,6 +15,8 @@ import time
 import queue
 from whisper_live.transcriber import WhisperModel
 from whisper_live.vad import VoiceActivityDetection
+
+from typing import Callable
 
 
 class TranscriptionServer:
@@ -35,9 +36,9 @@ class TranscriptionServer:
 
     RATE = 16000
 
-    def __init__(self, text_queue):
+    def __init__(self, vad_model: VoiceActivityDetection, text_queue):
         # voice activity detection model
-        self.vad_model = VoiceActivityDetection()
+        self.vad_model = vad_model
         self.vad_threshold = 0.7
 
         self.clients = {}
@@ -80,6 +81,24 @@ class TranscriptionServer:
         else:
             self.frames_np = np.concatenate((self.frames_np, frame_np), axis=0)
 
+    def client_provider(
+        self, websocket, multilingual: str, language: str, task: str, uid: str
+    ):
+        return ServeClient(
+            websocket,
+            multilingual=multilingual,
+            language=language,
+            task=task,
+            client_uid=uid,
+            audio_queue=self.audio_queue,
+            text_queue=self.text_queue,
+        )
+
+    def get_speech_probablity(self, frame_np):
+        return self.vad_model(
+            torch.from_numpy(frame_np.copy()), self.RATE
+        ).item()
+
     def recv_audio(self, websocket):
         """
         Receive audio chunks from a client in an infinite loop.
@@ -117,15 +136,12 @@ class TranscriptionServer:
             websocket.close()
             del websocket
             return
-
-        client = ServeClient(
+        client = self.client_provider(
             websocket,
             multilingual=options["multilingual"],
             language=options["language"],
             task=options["task"],
-            client_uid=options["uid"],
-            audio_queue=self.audio_queue,
-            text_queue=self.text_queue,
+            uid=options["uid"],
         )
 
         self.clients[websocket] = client
@@ -138,11 +154,8 @@ class TranscriptionServer:
             try:
                 frame_data = websocket.recv()
                 frame_np = np.frombuffer(frame_data, dtype=np.float32)
-
                 try:
-                    speech_prob = self.vad_model(
-                        torch.from_numpy(frame_np.copy()), self.RATE
-                    ).item()
+                    speech_prob = self.get_speech_probablity(frame_np)
                     print(
                         "PROB: "
                         + str(speech_prob)

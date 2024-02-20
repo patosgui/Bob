@@ -18,17 +18,32 @@ import websockets
 from websockets.sync.client import connect
 from matplotlib import pyplot
 
+# change sample rate for file for 1600 as expected by whisper
+# import librosa
+# y, s = librosa.load('StarWars60.wav', sr=16000)
+# import soundfile as sf
+# sf.write('stereo_file.wav', y, s)
+# exit
 
 count = 0
 plot_data = None
+
+
 class Client:
     """
     Handles audio recording, streaming, and communication with a server using WebSocket.
     """
+
     INSTANCES = {}
 
     def __init__(
-        self, host=None, port=None, is_multilingual=False, lang=None, translate=False, websocket_lopes=None
+        self,
+        host=None,
+        port=None,
+        is_multilingual=False,
+        lang=None,
+        translate=False,
+        websocket_lopes=None,
     ):
         """
         Initializes a Client instance for audio recording and streaming to a server.
@@ -72,7 +87,7 @@ class Client:
             rate=self.rate,
             input=True,
             frames_per_buffer=self.chunk,
-            input_device_index=1
+            input_device_index=1,
         )
 
         if host is not None and port is not None:
@@ -104,7 +119,7 @@ class Client:
     def on_message(self, ws, message):
         """
         Callback function called when a message is received from the server.
-        
+
         It updates various attributes of the client based on the received message, including
         recording status, language detection, and server messages. If a disconnect message
         is received, it sets the recording status to False.
@@ -160,16 +175,16 @@ class Client:
         wrapper = textwrap.TextWrapper(width=60)
         word_list = wrapper.wrap(text="".join(text))
         # Print each line.
-        #if os.name == "nt":
+        # if os.name == "nt":
         #    os.system("cls")
-        #else:
+        # else:
         #    os.system("clear")
         for element in word_list:
             print(element)
         global count
         count = count + 1
         print(message)
-        #print("MYPRINT" + message + str(count))
+        # print("MYPRINT" + message + str(count))
         if self.websocket_lopes:
             self.websocket_lopes.send(element)
 
@@ -177,12 +192,14 @@ class Client:
         print(error)
 
     def on_close(self, ws, close_status_code, close_msg):
-        print(f"[INFO]: Websocket connection closed: {close_status_code}: {close_msg}")
+        print(
+            f"[INFO]: Websocket connection closed: {close_status_code}: {close_msg}"
+        )
 
     def on_open(self, ws):
         """
         Callback function called when the WebSocket connection is successfully opened.
-        
+
         Sends an initial configuration message to the server, including client UID, multilingual mode,
         language selection, and task type.
 
@@ -208,8 +225,8 @@ class Client:
     def bytes_to_float_array(audio_bytes):
         """
         Convert audio data from bytes to a NumPy float array.
-        
-        It assumes that the audio data is in 16-bit PCM format. The audio data is normalized to 
+
+        It assumes that the audio data is in 16-bit PCM format. The audio data is normalized to
         have values between -1 and 1.
 
         Args:
@@ -237,10 +254,10 @@ class Client:
     def play_file(self, filename):
         """
         Play an audio file and send it to the server for processing.
-        
+
         Reads an audio file, plays it through the audio output, and simultaneously sends
-        the audio data to the server for processing. It uses PyAudio to create an audio 
-        stream for playback. The audio data is read from the file in chunks, converted to 
+        the audio data to the server for processing. It uses PyAudio to create an audio
+        stream for playback. The audio data is read from the file in chunks, converted to
         floating-point format, and sent to the server using WebSocket communication.
         This method is typically used when you want to process pre-recorded audio and send it
         to the server in real-time.
@@ -248,7 +265,7 @@ class Client:
         Args:
             filename (str): The path to the audio file to be played and sent to the server.
         """
-        
+
         # read audio and create pyaudio stream
         with wave.open(filename, "rb") as wavfile:
             self.stream = self.p.open(
@@ -272,7 +289,10 @@ class Client:
                 wavfile.close()
 
                 assert self.last_response_recieved
-                while time.time() - self.last_response_recieved < self.disconnect_if_no_response_for:
+                while (
+                    time.time() - self.last_response_recieved
+                    < self.disconnect_if_no_response_for
+                ):
                     continue
                 self.stream.close()
                 self.close_websocket()
@@ -289,7 +309,7 @@ class Client:
         """
         Close the WebSocket connection and join the WebSocket thread.
 
-        First attempts to close the WebSocket connection using `self.client_socket.close()`. After 
+        First attempts to close the WebSocket connection using `self.client_socket.close()`. After
         closing the connection, it joins the WebSocket thread to ensure proper termination.
 
         """
@@ -316,7 +336,7 @@ class Client:
         """
         Write audio frames to a WAV file.
 
-        The WAV file is created or overwritten with the specified name. The audio frames should be 
+        The WAV file is created or overwritten with the specified name. The audio frames should be
         in the correct format and match the specified channel, sample width, and sample rate.
 
         Args:
@@ -342,7 +362,7 @@ class Client:
 
         Audio data is saved in chunks to the "chunks" directory. Each chunk is saved as a separate WAV file.
         The recording will continue until the specified duration is reached or until the `RECORDING` flag is set to `False`.
-        The recording process can be interrupted by sending a KeyboardInterrupt (e.g., pressing Ctrl+C). After recording, 
+        The recording process can be interrupted by sending a KeyboardInterrupt (e.g., pressing Ctrl+C). After recording,
         the method combines all the saved audio chunks into the specified `out_file`.
 
         Args:
@@ -351,16 +371,17 @@ class Client:
         """
         global plot_data
 
-
-        #p = pyaudio.PyAudio()
-        #for i in range(p.get_device_count()):
+        # p = pyaudio.PyAudio()
+        # for i in range(p.get_device_count()):
         #    print(p.get_device_info_by_index(i))
 
         n_audio_file = 0
         if not os.path.exists("chunks"):
             os.makedirs("chunks", exist_ok=True)
         try:
-            for _ in range(0, int(self.rate / self.chunk * self.record_seconds)):
+            for _ in range(
+                0, int(self.rate / self.chunk * self.record_seconds)
+            ):
                 if not self.recording:
                     break
                 data = self.stream.read(self.chunk)
@@ -369,11 +390,11 @@ class Client:
                 audio_array = Client.bytes_to_float_array(data)
                 self.send_packet_to_server(audio_array.tobytes())
 
-
         except KeyboardInterrupt:
             if len(self.frames):
                 self.write_audio_frames_to_file(
-                    self.frames[:], f"C:\\Users\\lopes\\Downloads\\chunks\\{n_audio_file}.wav"
+                    self.frames[:],
+                    f"C:\\Users\\lopes\\Downloads\\chunks\\{n_audio_file}.wav",
                 )
                 n_audio_file += 1
             self.stream.stop_stream()
@@ -384,8 +405,8 @@ class Client:
     def write_output_recording(self, n_audio_file, out_file):
         """
         Combine and save recorded audio chunks into a single WAV file.
-        
-        The individual audio chunk files are expected to be located in the "chunks" directory. Reads each chunk 
+
+        The individual audio chunk files are expected to be located in the "chunks" directory. Reads each chunk
         file, appends its audio data to the final recording, and then deletes the chunk file. After combining
         and saving, the final recording is stored in the specified `out_file`.
 
@@ -418,14 +439,17 @@ class Client:
 
 
 def hello():
-        websocket.send("Can you turn the kitchen light on?")
-        message = websocket.recv()
-        print(f"Received: {message}")
+    websocket.send("Can you turn the kitchen light on?")
+    message = websocket.recv()
+    print(f"Received: {message}")
 
-#client = TranscriptionClient("localhost", 9090, is_multilingual=True, lang="hi", translate=True)
-#client()
-#with connect('ws://localhost:5679') as websocket_yo:
-client = Client("127.0.0.1", 5679, is_multilingual=True, lang="hi", translate=True)
+
+# client = TranscriptionClient("localhost", 9090, is_multilingual=True, lang="hi", translate=True)
+# client()
+# with connect('ws://localhost:5679') as websocket_yo:
+client = Client(
+    "127.0.0.1", 5679, is_multilingual=True, lang="hi", translate=True
+)
 
 print("[INFO]: Waiting for server ready ...")
 while not client.recording:
@@ -435,6 +459,8 @@ while not client.recording:
     pass
 
 print("[INFO]: Server Ready!")
-#client.record()
-client.play_file("C:\\Users\\lopes\\Downloads\\chunks\\hey_bob_office_light.wav")
-#client.play_file("C:\\Users\\lopes\\Downloads\\chunks\\hey_bob_kitchen_light.wav")
+# client.record()
+client.play_file(
+    "C:\\Users\\lopes\\Downloads\\chunks\\hey_bob_office_light.wav"
+)
+# client.play_file("C:\\Users\\lopes\\Downloads\\chunks\\hey_bob_kitchen_light.wav")

@@ -8,6 +8,7 @@ import re
 
 from queue import Queue, Empty
 from whisper_server import TranscriptionServer
+from whisper_live.vad import VoiceActivityDetection
 
 # The text queue used to pass data from the TranscriptionServer for further
 # processing
@@ -50,7 +51,9 @@ class CommandProcessor:
         self.lm = lm
 
     async def start(self):
-        server = TranscriptionServer(text_queue=text_queue)
+        server = TranscriptionServer(
+            vad_model=VoiceActivityDetection(), text_queue=text_queue
+        )
         thread = threading.Thread(target=server.run, args=("0.0.0.0", 5676))
         thread.start()
         self.debug.initializationOver()
