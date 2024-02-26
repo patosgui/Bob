@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 
+# change sample rate for file for 1600 as expected by whisper
+# import librosa
+# y, s = librosa.load('StarWars60.wav', sr=16000)
+# import soundfile as sf
+# sf.write('stereo_file.wav', y, s)
+# exit
+
+
+#!/usr/bin/env python3
+
 import os
 import wave
 
 import numpy as np
-import scipy
-import ffmpeg
 import pyaudio
 import threading
 import textwrap
@@ -13,17 +21,6 @@ import json
 import websocket
 import uuid
 import time
-import asyncio
-import websockets
-from websockets.sync.client import connect
-from matplotlib import pyplot
-
-# change sample rate for file for 1600 as expected by whisper
-# import librosa
-# y, s = librosa.load('StarWars60.wav', sr=16000)
-# import soundfile as sf
-# sf.write('stereo_file.wav', y, s)
-# exit
 
 count = 0
 plot_data = None
@@ -60,7 +57,7 @@ class Client:
             translate (bool, optional): Specifies if the task is translation. Default is False.
         """
         self.websocket_lopes = websocket_lopes
-        self.chunk = 1024
+        self.chunk = 2048
         self.format = pyaudio.paInt16
         self.channels = 1
         self.rate = 16000
@@ -448,7 +445,7 @@ def hello():
 # client()
 # with connect('ws://localhost:5679') as websocket_yo:
 client = Client(
-    "127.0.0.1", 5679, is_multilingual=True, lang="hi", translate=True
+    "127.0.0.1", 5676, is_multilingual=False, lang="en", translate=True
 )
 
 print("[INFO]: Waiting for server ready ...")
@@ -459,8 +456,9 @@ while not client.recording:
     pass
 
 print("[INFO]: Server Ready!")
-# client.record()
-client.play_file(
-    "C:\\Users\\lopes\\Downloads\\chunks\\hey_bob_office_light.wav"
-)
+client.record()
+
+# client.play_file("C:\\Users\\lopes\\Downloads\\stereo_file.wav")
+# client.play_file("C:\\Users\\lopes\\Downloads\\chunks\\hey_bob_office_light.wav")
+# client.play_file("C:\\Users\\lopes\\Downloads\\chunks\\hey_bob_office_light.wav")
 # client.play_file("C:\\Users\\lopes\\Downloads\\chunks\\hey_bob_kitchen_light.wav")

@@ -169,8 +169,6 @@ class TranscriptionServer:
         self.clients[websocket] = client
         self.clients_start_time[websocket] = time.time()
 
-        # 0: no capturing
-        # 1: capturing
         state = AudioStatus.WAIT_FOR_VOICE
         while True:
             try:
