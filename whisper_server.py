@@ -39,13 +39,14 @@ class TranscriptionServer:
     def __init__(self, vad_model: VoiceActivityDetection, text_queue):
         # voice activity detection model
         self.vad_model = vad_model
-        self.vad_threshold = 0.7
+        self.vad_threshold = 0.5
 
         self.clients = {}
         self.websockets = {}
         self.clients_start_time = {}
         self.max_clients = 4
-        self.max_connection_time = 600
+        # 24 hours
+        self.max_connection_time = 86400
         self.frames_np = None
 
         # An internal queue to pass audio to the thread that transcribes it
@@ -156,11 +157,8 @@ class TranscriptionServer:
                 frame_np = np.frombuffer(frame_data, dtype=np.float32)
                 try:
                     speech_prob = self.get_speech_probablity(frame_np)
-                    print(
-                        "PROB: "
-                        + str(speech_prob)
-                        + " CHUNK: "
-                        + str(len(frame_np))
+                    logging.debug(
+                        f"Audio frame - size: {len(frame_np)} prob: {speech_prob}"
                     )
                     if speech_prob < self.vad_threshold:
                         if state == 1:
@@ -168,7 +166,7 @@ class TranscriptionServer:
                             # When speech is over, pass it to whisper and reset data
                             self.audio_queue.put_nowait(self.frames_np)
                             self.frames_np = None
-                            logging.info("Turning speech recognition off")
+                            logging.info("Turning speech recognition off!")
                             state = 0
                         continue
 
@@ -176,14 +174,11 @@ class TranscriptionServer:
                     logging.error(e)
                     return
 
-                logging.info("VAD_TRESHOLD " + str(speech_prob))
                 if not state:
-                    logging.info("Turning speech recognition on")
+                    logging.info("Turning speech recognition on!")
                 state = 1
 
                 self.add_frames(frame_np)
-                # self.clients[websocket].add_frames(frame_np)
-
                 elapsed_time = time.time() - self.clients_start_time[websocket]
                 if elapsed_time >= self.max_connection_time:
                     self.clients[websocket].disconnect()

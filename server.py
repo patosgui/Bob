@@ -43,7 +43,7 @@ class CommandProcessor:
         ai_engine: ai_engine.AIEngine = ai_engine.AIEngine(),
         lm: light_manager.LightManager = light_manager.LightManager(),
         debug: Debug = Debug(),
-        trigger: str = "Hey Bob",
+        trigger: str = "Bob",
     ) -> None:
         self.debug = debug
         self.trigger = trigger
