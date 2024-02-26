@@ -40,7 +40,6 @@ class Client:
         is_multilingual=False,
         lang=None,
         translate=False,
-        websocket_lopes=None,
     ):
         """
         Initializes a Client instance for audio recording and streaming to a server.
@@ -56,7 +55,6 @@ class Client:
             lang (str, optional): The selected language for transcription when multilingual is disabled. Default is None.
             translate (bool, optional): Specifies if the task is translation. Default is False.
         """
-        self.websocket_lopes = websocket_lopes
         self.chunk = 2048
         self.format = pyaudio.paInt16
         self.channels = 1
@@ -126,64 +124,15 @@ class Client:
             message (str): The received message from the server.
 
         """
-        self.last_response_recieved = time.time()
         message = json.loads(message)
         print(message)
         if self.uid != message.get("uid"):
             print("[ERROR]: invalid client uid")
             return
 
-        if "status" in message.keys() and message["status"] == "WAIT":
-            self.waiting = True
-            print(
-                f"[INFO]:Server is full. Estimated wait time {round(message['message'])} minutes."
-            )
-
-        if "message" in message.keys() and message["message"] == "DISCONNECT":
-            print("[INFO]: Server overtime disconnected.")
-            self.recording = False
-
         if "message" in message.keys() and message["message"] == "SERVER_READY":
             self.recording = True
             return
-
-        if "language" in message.keys():
-            self.language = message.get("language")
-            lang_prob = message.get("language_prob")
-            print(
-                f"[INFO]: Server detected language {self.language} with probability {lang_prob}"
-            )
-            return
-
-        if "segments" not in message.keys():
-            return
-
-        message = message["segments"]
-        text = []
-        if len(message):
-            for seg in message:
-                if text and text[-1] == seg["text"]:
-                    # already got it
-                    continue
-                text.append(seg["text"])
-        # keep only last 3
-        if len(text) > 3:
-            text = text[-3:]
-        wrapper = textwrap.TextWrapper(width=60)
-        word_list = wrapper.wrap(text="".join(text))
-        # Print each line.
-        # if os.name == "nt":
-        #    os.system("cls")
-        # else:
-        #    os.system("clear")
-        for element in word_list:
-            print(element)
-        global count
-        count = count + 1
-        print(message)
-        # print("MYPRINT" + message + str(count))
-        if self.websocket_lopes:
-            self.websocket_lopes.send(element)
 
     def on_error(self, ws, error):
         print(error)
@@ -204,8 +153,6 @@ class Client:
             ws (websocket.WebSocketApp): The WebSocket client instance.
 
         """
-        print(self.multilingual, self.language, self.task)
-
         print("[INFO]: Opened connection")
         ws.send(
             json.dumps(
@@ -320,15 +267,6 @@ class Client:
         except Exception as e:
             print("[ERROR:] Error joining WebSocket thread:", e)
 
-    def get_client_socket(self):
-        """
-        Get the WebSocket client socket instance.
-
-        Returns:
-            WebSocketApp: The WebSocket client socket instance currently in use by the client.
-        """
-        return self.client_socket
-
     def write_audio_frames_to_file(self, frames, file_name):
         """
         Write audio frames to a WAV file.
@@ -348,6 +286,13 @@ class Client:
             wavfile.setsampwidth(2)
             wavfile.setframerate(self.rate)
             wavfile.writeframes(frames)
+
+    def wait_server_ready(self):
+        print("[INFO]: Waiting for server ready ...")
+        # The on_message callback turns the self.recording to true
+        while not client.recording:
+            pass
+        print("[INFO]: Server Ready!")
 
     def record(self, out_file="output_recording.wav"):
         """
@@ -371,7 +316,6 @@ class Client:
         # p = pyaudio.PyAudio()
         # for i in range(p.get_device_count()):
         #    print(p.get_device_info_by_index(i))
-
         n_audio_file = 0
         if not os.path.exists("chunks"):
             os.makedirs("chunks", exist_ok=True)
@@ -435,27 +379,11 @@ class Client:
         wavfile.close()
 
 
-def hello():
-    websocket.send("Can you turn the kitchen light on?")
-    message = websocket.recv()
-    print(f"Received: {message}")
-
-
-# client = TranscriptionClient("localhost", 9090, is_multilingual=True, lang="hi", translate=True)
-# client()
-# with connect('ws://localhost:5679') as websocket_yo:
 client = Client(
     "127.0.0.1", 5676, is_multilingual=False, lang="en", translate=True
 )
 
-print("[INFO]: Waiting for server ready ...")
-while not client.recording:
-    if client.waiting:
-        client.close_websocket()
-        exit(1)
-    pass
-
-print("[INFO]: Server Ready!")
+client.wait_server_ready()
 client.record()
 
 # client.play_file("C:\\Users\\lopes\\Downloads\\stereo_file.wav")
