@@ -43,7 +43,8 @@ def test_recv_audio_no_voice(speech_prob, caplog):
 
 @patch.object(TranscriptionServer, "client_provider", mock.Mock())
 @patch.object(TranscriptionServer, "get_speech_probablity")
-def test_recv_audio_voice(speech_prob, caplog):
+@patch.object(TranscriptionServer, "shouldTurnSpeechRecOff")
+def test_recv_audio_voice(shoud_turn_off, speech_prob, caplog):
     text_queue = Queue()
     mock_vad_model = mock.Mock()
     ts = TranscriptionServer(vad_model=mock_vad_model, text_queue=text_queue)
@@ -55,6 +56,9 @@ def test_recv_audio_voice(speech_prob, caplog):
         b"\x00\x00\x00\x00\x00\x00\x00\x00"
     ]
     speech_prob.side_effect = [0.8, 0.3]
+    # Do not go through the hassle of needing 0.5 seconds of data during testing
+    shoud_turn_off.return_value = True
+
     with caplog.at_level(logging.DEBUG):
         thread = threading.Thread(target=ts.recv_audio, args=(mock_websocket,))
         thread.start()

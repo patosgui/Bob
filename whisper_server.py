@@ -16,7 +16,12 @@ import queue
 from whisper_live.transcriber import WhisperModel
 from whisper_live.vad import VoiceActivityDetection
 
-from typing import Callable
+from enum import Enum
+
+
+class AudioStatus(Enum):
+    LISTENING = 1
+    WAIT_FOR_VOICE = 2
 
 
 class TranscriptionServer:
@@ -35,6 +40,7 @@ class TranscriptionServer:
     """
 
     RATE = 16000
+    CHUNK_SIZE = 2048
 
     def __init__(self, vad_model: VoiceActivityDetection, text_queue):
         # voice activity detection model
@@ -53,6 +59,11 @@ class TranscriptionServer:
         self.audio_queue = queue.Queue()
         # Where to write the transcribed text to
         self.text_queue = text_queue
+
+        # Assume 0.5 seconds of no voice to stop voice rec
+        frames_required = 0.5 * self.RATE
+        self.chunks_req = frames_required / self.CHUNK_SIZE
+        self.chunk_cnt = 0
 
     def get_wait_time(self):
         """
@@ -99,6 +110,16 @@ class TranscriptionServer:
         return self.vad_model(
             torch.from_numpy(frame_np.copy()), self.RATE
         ).item()
+
+    def shouldTurnSpeechRecOff(self, speech_prob):
+        if speech_prob < self.vad_threshold:
+            self.chunk_cnt = self.chunk_cnt + 1
+
+        if self.chunk_cnt >= self.chunks_req:
+            self.chunk_cnt = 0
+            return True
+
+        return False
 
     def recv_audio(self, websocket):
         """
@@ -150,35 +171,40 @@ class TranscriptionServer:
 
         # 0: no capturing
         # 1: capturing
-        state = 0
+        state = AudioStatus.WAIT_FOR_VOICE
         while True:
             try:
                 frame_data = websocket.recv()
                 frame_np = np.frombuffer(frame_data, dtype=np.float32)
                 try:
                     speech_prob = self.get_speech_probablity(frame_np)
-                    logging.debug(
-                        f"Audio frame - size: {len(frame_np)} prob: {speech_prob}"
-                    )
-                    if speech_prob < self.vad_threshold:
-                        if state == 1:
-                            logging.info("Passing data to whisper thread")
-                            # When speech is over, pass it to whisper and reset data
-                            self.audio_queue.put_nowait(self.frames_np)
-                            self.frames_np = None
-                            logging.info("Turning speech recognition off!")
-                            state = 0
-                        continue
-
                 except Exception as e:
                     logging.error(e)
                     return
 
-                if not state:
-                    logging.info("Turning speech recognition on!")
-                state = 1
+                logging.info(
+                    f"Audio frame - size: {len(frame_np)} prob: {speech_prob}"
+                )
 
-                self.add_frames(frame_np)
+                if state == AudioStatus.LISTENING:
+                    if self.shouldTurnSpeechRecOff(speech_prob):
+                        logging.info("Passing data to whisper thread")
+                        # When speech is over, pass it to whisper and reset data
+                        self.audio_queue.put_nowait(self.frames_np)
+                        self.frames_np = None
+                        logging.info("Turning speech recognition off!")
+                        state = AudioStatus.WAIT_FOR_VOICE
+                    else:
+                        # Keep recording new frames
+                        self.add_frames(frame_np)
+                elif state == AudioStatus.WAIT_FOR_VOICE:
+                    # Be more aggressive in listening. The current assumption
+                    # is that the problem are the pauses while talking to bob
+                    if speech_prob > self.vad_threshold:
+                        logging.info("Turning speech recognition on!")
+                        state = AudioStatus.LISTENING
+                        self.add_frames(frame_np)
+
                 elapsed_time = time.time() - self.clients_start_time[websocket]
                 if elapsed_time >= self.max_connection_time:
                     self.clients[websocket].disconnect()
