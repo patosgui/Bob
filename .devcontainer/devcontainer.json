@@ -1,6 +1,7 @@
 {
 	"name": "Ubuntu 22.04",
-	"workspaceFolder": "${localWorkspaceFolder}",
+	"mounts": ["source=${localWorkspaceFolder},target=/workspace,type=bind"],
+	"workspaceFolder": "/workspace",
 	"dockerComposeFile": ["docker-compose.yml"],
 	"service": "devcontainer",
 	"remoteUser":"pedro",

@@ -8,7 +8,7 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
     g++ \ 
     graphviz git cmake ninja-build \
     python3 python3-venv tree \
-    xz-utils zip locales gpg
+    xz-utils zip locales gpg dos2unix
  
 # Install Clang/LLVM
 RUN wget https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.4/clang+llvm-16.0.4-x86_64-linux-gnu-ubuntu-22.04.tar.xz
@@ -48,11 +48,14 @@ RUN useradd -ms /bin/bash ${USER}
 USER ${USER}
 RUN sh -c "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)"
 RUN ln -s /host_home/.ssh ~/.ssh
-
 # Do not bind ~/ between host and container. Some tools only work in specific
 # OSes
 COPY --chown=${USER} .gitconfig /home/${USER}
 COPY --chown=${USER} .zshrc /home/${USER}
+
+# Remove carriage returns to be unix friendly
+RUN dos2unix /home/${USER}/.gitconfig
+RUN dos2unix /home/${USER}/.zshrc
 
 # This needs to be here because broot --install modifies ~/.zshrc
 RUN broot --install

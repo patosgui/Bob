@@ -21,6 +21,7 @@ import json
 import websocket
 import uuid
 import time
+import logging
 
 count = 0
 plot_data = None
@@ -87,7 +88,7 @@ class Client:
 
         if host is not None and port is not None:
             socket_url = f"ws://{host}:{port}"
-            print(socket_url)
+            logging.info("Connection details: " + str(socket_url))
             self.client_socket = websocket.WebSocketApp(
                 socket_url,
                 on_open=lambda ws: self.on_open(ws),
@@ -98,7 +99,7 @@ class Client:
                 ),
             )
         else:
-            print("[ERROR]: No host or port specified.")
+            logging.error("No host or port specified.")
             return
 
         Client.INSTANCES[self.uid] = self
@@ -109,7 +110,7 @@ class Client:
         self.ws_thread.start()
 
         self.frames = b""
-        print("[INFO]: * recording")
+        logging.info("* recording")
 
     def on_message(self, ws, message):
         """
@@ -125,9 +126,8 @@ class Client:
 
         """
         message = json.loads(message)
-        print(message)
         if self.uid != message.get("uid"):
-            print("[ERROR]: invalid client uid")
+            logging.error("invalid client uid")
             return
 
         if "message" in message.keys() and message["message"] == "SERVER_READY":
@@ -135,11 +135,11 @@ class Client:
             return
 
     def on_error(self, ws, error):
-        print(error)
+        logging.error(error)
 
     def on_close(self, ws, close_status_code, close_msg):
-        print(
-            f"[INFO]: Websocket connection closed: {close_status_code}: {close_msg}"
+        logging.info(
+            f"Websocket connection closed: {close_status_code}: {close_msg}"
         )
 
     def on_open(self, ws):
@@ -153,7 +153,7 @@ class Client:
             ws (websocket.WebSocketApp): The WebSocket client instance.
 
         """
-        print("[INFO]: Opened connection")
+        logging.info("[INFO]: Opened connection")
         ws.send(
             json.dumps(
                 {
@@ -193,7 +193,7 @@ class Client:
         try:
             self.client_socket.send(message, websocket.ABNF.OPCODE_BINARY)
         except Exception as e:
-            print(e)
+            logging.error(e)
 
     def play_file(self, filename):
         """
@@ -247,7 +247,7 @@ class Client:
                 self.stream.close()
                 self.p.terminate()
                 self.close_websocket()
-                print("[INFO]: Keyboard interrupt.")
+                logging.info("[INFO]: Keyboard interrupt.")
 
     def close_websocket(self):
         """
@@ -260,12 +260,12 @@ class Client:
         try:
             self.client_socket.close()
         except Exception as e:
-            print("[ERROR]: Error closing WebSocket:", e)
+            logging.error("Error closing WebSocket:", e)
 
         try:
             self.ws_thread.join()
         except Exception as e:
-            print("[ERROR:] Error joining WebSocket thread:", e)
+            logging.error("Error joining WebSocket thread:", e)
 
     def write_audio_frames_to_file(self, frames, file_name):
         """
@@ -280,7 +280,6 @@ class Client:
 
         """
         with wave.open(file_name, "wb") as wavfile:
-            print(file_name)
             wavfile: wave.Wave_write
             wavfile.setnchannels(self.channels)
             wavfile.setsampwidth(2)
@@ -288,11 +287,11 @@ class Client:
             wavfile.writeframes(frames)
 
     def wait_server_ready(self):
-        print("[INFO]: Waiting for server ready ...")
+        logging.info("Waiting for server ready ...")
         # The on_message callback turns the self.recording to true
         while not client.recording:
             pass
-        print("[INFO]: Server Ready!")
+        logging.info("Server Ready!")
 
     def record(self, out_file="output_recording.wav"):
         """
@@ -377,6 +376,15 @@ class Client:
                 # remove this file
                 os.remove(in_file)
         wavfile.close()
+
+
+logging.basicConfig(
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    encoding="utf-8",
+    level=logging.INFO,
+    handlers=[logging.StreamHandler()],
+)
 
 
 client = Client(

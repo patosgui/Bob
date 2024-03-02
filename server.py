@@ -90,7 +90,7 @@ class CommandProcessor:
         if re.search("command.*office01.*on", output):
             self.lm.on(6, True)
 
-        if re.search("command.*entrance01.*off", output):
+        if re.search("command.*office01.*off", output):
             self.lm.on(6, False)
 
     def wait_for_new_data(self, timeout=None):
