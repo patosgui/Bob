@@ -1,0 +1,56 @@
+{
+	"name": "Ubuntu 22.04",
+	"workspaceFolder": "${localWorkspaceFolder}",
+	"dockerComposeFile": ["docker-compose.yml"],
+	"service": "devcontainer",
+	"remoteUser":"pedro",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"llvm-vs-code-extensions.vscode-clangd",
+				"ms-python.python", // Order matter. Python must come before black
+				"ms-python.black-formatter",
+				"GitHub.vscode-pull-request-github",
+				"ms-vscode.cmake-tools",
+				"eamodio.gitlens",
+				"vadimcn.vscode-lldb",
+				"tintinweb.graphviz-interactive-preview"
+			],
+			"settings": {
+				// Use zsh on the integrated terminals
+				"terminal.integrated.defaultProfile.linux": "zsh",
+
+    			// Python formatting on save following vcxx guidelines
+    			"[python]": {
+    			    "editor.defaultFormatter": "ms-python.black-formatter",
+    			    "editor.formatOnSave": true
+    			},
+    			"black-formatter.args": [
+    			    "--line-length=80", "--skip-magic-trailing-comma", "--target-version",  "py310"
+    			],
+    			"black-formatter.interpreter": [
+			// Installed by default in Jammy
+    			    "/bin/python3"
+    			],
+
+    			// C/CXX formatting on save
+    			"[c]": {
+    			    "editor.formatOnSave": true
+    			},
+    			"[cpp]": {
+    			    "editor.formatOnSave": true
+    			},
+				
+				// Configure cmake extension to care care of updating compile_comands.json
+				"cmake.useCMakePresets": "always",
+				"cmake.sourceDirectory": "${workspaceFolder}",
+				"cmake.configureOnEdit": false,
+    			"cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
+				"clangd.arguments": [
+					"--header-insertion=never",
+					"-j=4"
+				]
+			}
+		}
+	}
+}

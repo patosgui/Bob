@@ -1,0 +1,22 @@
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # echo ${USER}
+        - USER=${USER}
+        # Configure git
+        - GIT_NAME=Jose Lopes
+        - GIT_EMAIL=pedro.fraiao2@gmail.com
+    volumes:
+     # This directory is set by the Dockerfile first to get the first permissions.
+     # It is also used in user.ccache.conf to set the path for ccache
+     - ccache:/ccache
+     - type: bind
+       source : "${HOME}/shared"
+       target: "${HOME}/shared"
+    command: /bin/sh -c "while sleep 1000; do :; done"
+
+volumes:
+  ccache:

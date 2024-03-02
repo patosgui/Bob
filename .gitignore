@@ -1,7 +1,6 @@
 env
 __pycache__
 gpt2/results
-.devcontainer
 client_*
 server_*
 soilero.onnx
