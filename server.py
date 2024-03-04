@@ -2,6 +2,7 @@ from abc import abstractmethod
 import asyncio
 import logging
 import ai_engine
+from audio_capture import AudioChannel
 import light_manager
 import threading
 import re
@@ -50,12 +51,16 @@ class CommandProcessor:
         self.aie = ai_engine
         self.lm = lm
 
-    async def start(self):
+    async def start(self, audio_channel: AudioChannel):
+        # Run the voice detection as a thread
         server = TranscriptionServer(
-            vad_model=VoiceActivityDetection(), text_queue=text_queue
+            vad_model=VoiceActivityDetection(),
+            audio_channel=audio_channel,
+            text_queue=text_queue,
         )
-        thread = threading.Thread(target=server.run, args=("0.0.0.0", 5676))
+        thread = threading.Thread(target=server.recv_audio)
         thread.start()
+
         self.debug.initializationOver()
 
         while True:

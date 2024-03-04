@@ -11,6 +11,7 @@
 #!/usr/bin/env python3
 
 import os
+from typing import Optional
 import wave
 
 import numpy as np
@@ -27,6 +28,22 @@ count = 0
 plot_data = None
 
 
+def search_microphone(device_name: str, timeout=600) -> Optional[int]:
+    p = pyaudio.PyAudio()
+
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        logging.info(f'Searching for microphone: "{device_name}"')
+        for i in range(p.get_device_count()):
+            device_info = p.get_device_info_by_index(i)
+            if device_info["name"] == device_name:
+                logging.info("Microphone found!")
+                return i
+        time.sleep(10)
+
+    return None
+
+
 class Client:
     """
     Handles audio recording, streaming, and communication with a server using WebSocket.
@@ -36,11 +53,12 @@ class Client:
 
     def __init__(
         self,
-        host=None,
-        port=None,
-        is_multilingual=False,
-        lang=None,
-        translate=False,
+        device_number: int = 1,
+        host: str = None,
+        port: int = None,
+        is_multilingual: bool = False,
+        lang: str = None,
+        translate: bool = False,
     ):
         """
         Initializes a Client instance for audio recording and streaming to a server.
@@ -83,7 +101,7 @@ class Client:
             rate=self.rate,
             input=True,
             frames_per_buffer=self.chunk,
-            input_device_index=1,
+            input_device_index=device_number,
         )
 
         if host is not None and port is not None:
@@ -386,9 +404,15 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 
+device_number = search_microphone(device_name="Microphone (Arctis Nova 7)")
 
 client = Client(
-    "127.0.0.1", 5676, is_multilingual=False, lang="en", translate=True
+    "127.0.0.1",
+    5676,
+    device_number=device_number,
+    is_multilingual=False,
+    lang="en",
+    translate=True,
 )
 
 client.wait_server_ready()

@@ -3,8 +3,11 @@
 import argparse
 import asyncio
 import logging
+import threading
+import time
 
 import server
+import audio_capture
 
 
 class Logger(server.Debug):
@@ -35,6 +38,7 @@ if __name__ == "__main__":
         type=str,
         default="72aa9b5d-2670-4d08-8b22-e8d0a48f7897",
     )
+    parser.add_argument("--record", action="store_true", default=False)
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -45,6 +49,27 @@ if __name__ == "__main__":
         handlers=[logging.StreamHandler()],
     )
 
+    audio_channel = None
+    if args.record:
+        device_number = audio_capture.search_microphone(
+            device_name="Microphone (Arctis Nova 7)"
+        )
+        audio_channel = audio_capture.LocalAudioChannel()
+        client = audio_capture.Client(
+            device_number=device_number,
+            audio_channel=audio_channel,
+            is_multilingual=False,
+            lang="en",
+            translate=True,
+        )
+
+        thread = threading.Thread(target=client.record)
+        thread.start()
+    else:
+        audio_channel = audio_capture.WebSocketAudioChannel(
+            host="127.0.0.1", port=5676, send=False
+        )
+
     log = Logger(logging)
     cmd_processor = server.CommandProcessor(debug=log)
-    res1 = asyncio.run(cmd_processor.start())
+    res1 = asyncio.run(cmd_processor.start(audio_channel=audio_channel))

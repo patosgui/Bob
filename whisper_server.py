@@ -33,7 +33,7 @@ class TranscriptionServer:
         vad_model (torch.Module): The voice activity detection model.
         vad_threshold (float): The voice activity detection threshold.
         clients (dict): A dictionary to store connected clients.
-        websockets (dict): A dictionary to store WebSocket connections.
+        audio_channels (dict): A dictionary to store WebSocket connections.
         clients_start_time (dict): A dictionary to track client start times.
         max_clients (int): Maximum allowed connected clients.
         max_connection_time (int): Maximum allowed connection time in seconds.
@@ -42,19 +42,22 @@ class TranscriptionServer:
     RATE = 16000
     CHUNK_SIZE = 2048
 
-    def __init__(self, vad_model: VoiceActivityDetection, text_queue):
+    def __init__(
+        self, vad_model: VoiceActivityDetection, audio_channel, text_queue
+    ):
         # voice activity detection model
         self.vad_model = vad_model
         self.vad_threshold = 0.5
 
         self.clients = {}
-        self.websockets = {}
+        self.audio_channels = {}
         self.clients_start_time = {}
         self.max_clients = 4
         # 24 hours
         self.max_connection_time = 86400
         self.frames_np = None
 
+        self.audio_channel = audio_channel
         # An internal queue to pass audio to the thread that transcribes it
         self.audio_queue = queue.Queue()
         # Where to write the transcribed text to
@@ -94,10 +97,15 @@ class TranscriptionServer:
             self.frames_np = np.concatenate((self.frames_np, frame_np), axis=0)
 
     def client_provider(
-        self, websocket, multilingual: str, language: str, task: str, uid: str
+        self,
+        audio_channel,
+        multilingual: str,
+        language: str,
+        task: str,
+        uid: str,
     ):
         return ServeClient(
-            websocket,
+            audio_channel,
             multilingual=multilingual,
             language=language,
             task=task,
@@ -121,12 +129,12 @@ class TranscriptionServer:
 
         return False
 
-    def recv_audio(self, websocket):
+    def recv_audio(self):
         """
         Receive audio chunks from a client in an infinite loop.
 
         Continuously receives audio frames from a connected client
-        over a WebSocket connection. It processes the audio frames using a
+        over a audio_channel connection. It processes the audio frames using a
         voice activity detection (VAD) model to determine if they contain speech
         or not. If the audio frame contains speech, it is added to the client's
         audio data for ASR.
@@ -137,42 +145,31 @@ class TranscriptionServer:
         be disconnected, and the client's resources will be cleaned up.
 
         Args:
-            websocket (WebSocket): The WebSocket connection for the client.
+            audio_channel (WebSocket): The WebSocket connection for the client.
 
         Raises:
             Exception: If there is an error during the audio frame processing.
         """
         logging.info("New client connected")
-        options = websocket.recv()
+        options = self.audio_channel.recv()
         options = json.loads(options)
+        logging.info(options)
 
-        if len(self.clients) >= self.max_clients:
-            logging.warning("Client Queue Full. Asking client to wait ...")
-            wait_time = self.get_wait_time()
-            response = {
-                "uid": options["uid"],
-                "status": "WAIT",
-                "message": wait_time,
-            }
-            websocket.send(json.dumps(response))
-            websocket.close()
-            del websocket
-            return
         client = self.client_provider(
-            websocket,
+            audio_channel=self.audio_channel,
             multilingual=options["multilingual"],
             language=options["language"],
             task=options["task"],
             uid=options["uid"],
         )
 
-        self.clients[websocket] = client
-        self.clients_start_time[websocket] = time.time()
+        self.clients[self.audio_channel] = client
+        self.clients_start_time[self.audio_channel] = time.time()
 
         state = AudioStatus.WAIT_FOR_VOICE
         while True:
             try:
-                frame_data = websocket.recv()
+                frame_data = self.audio_channel.recv()
                 frame_np = np.frombuffer(frame_data, dtype=np.float32)
                 try:
                     speech_prob = self.get_speech_probablity(frame_np)
@@ -203,27 +200,30 @@ class TranscriptionServer:
                         state = AudioStatus.LISTENING
                         self.add_frames(frame_np)
 
-                elapsed_time = time.time() - self.clients_start_time[websocket]
+                elapsed_time = (
+                    time.time() - self.clients_start_time[self.audio_channel]
+                )
                 if elapsed_time >= self.max_connection_time:
-                    self.clients[websocket].disconnect()
+                    self.clients[self.audio_channel].disconnect()
                     logging.warning(
-                        f"{self.clients[websocket]} Client disconnected due to overtime."
+                        f"{self.clients[self.audio_channel]} Client disconnected due to overtime."
                     )
-                    self.clients[websocket].cleanup()
-                    self.clients.pop(websocket)
-                    self.clients_start_time.pop(websocket)
-                    websocket.close()
-                    del websocket
+                    self.clients[self.audio_channel].cleanup()
+                    self.clients.pop(self.audio_channel)
+                    self.clients_start_time.pop(self.audio_channel)
+                    audio_channel.close()
+                    del audio_channel
                     break
-
+            except TypeError as e:
+                logging.error(frame_data)
             except Exception as e:
                 logging.error(e)
-                self.clients[websocket].cleanup()
-                self.clients.pop(websocket)
-                self.clients_start_time.pop(websocket)
+                self.clients[audio_channel].cleanup()
+                self.clients.pop(audio_channel)
+                self.clients_start_time.pop(audio_channel)
                 logging.info("Connection Closed.")
                 logging.info(self.clients)
-                del websocket
+                del audio_channel
                 break
 
     def run(self, host, port):
@@ -265,7 +265,7 @@ class ServeClient:
         send_last_n_segments (int): Number of last segments to send to the client.
         wrapper (textwrap.TextWrapper): Text wrapper for formatting text.
         pick_previous_segments (int): Number of previous segments to include in the output.
-        websocket: The WebSocket connection for the client.
+        audio_channel: The WebSocket connection for the client.
     """
 
     RATE = 16000
@@ -274,7 +274,7 @@ class ServeClient:
 
     def __init__(
         self,
-        websocket,
+        audio_channel,
         task="transcribe",
         device=None,
         multilingual=False,
@@ -290,7 +290,7 @@ class ServeClient:
         to the client to indicate that the server is ready.
 
         Args:
-            websocket (WebSocket): The WebSocket connection for the client.
+            audio_channel (WebSocket): The WebSocket connection for the client.
             task (str, optional): The task type, e.g., "transcribe." Defaults to "transcribe".
             device (str, optional): The device type for Whisper, "cuda" or "cpu". Defaults to None.
             multilingual (bool, optional): Whether the client supports multilingual transcription. Defaults to False.
@@ -336,12 +336,12 @@ class ServeClient:
         self.pick_previous_segments = 2
 
         # threading
-        self.websocket = websocket
+        self.audio_channel = audio_channel
         self.trans_thread = threading.Thread(target=self.speech_to_text)
         self.trans_thread.start()
-        self.websocket.send(
-            json.dumps({"uid": self.client_uid, "message": self.SERVER_READY})
-        )
+        # self.audio_channel.send(
+        #    json.dumps({"uid": self.client_uid, "message": self.SERVER_READY})
+        # )
 
     def fill_output(self, output):
         """
@@ -404,7 +404,7 @@ class ServeClient:
         Process an audio stream in an infinite loop, continuously transcribing the speech.
 
         This method continuously receives audio frames, performs real-time transcription, and sends
-        transcribed segments to the client via a WebSocket connection.
+        transcribed segments to the client via a audio_channel connection.
 
         If the client's language is not detected, it waits for 30 seconds of audio input to make a language prediction.
         It utilizes the Whisper ASR model to transcribe the audio, continuously processing and streaming results. Segments
@@ -413,7 +413,7 @@ class ServeClient:
         there is no speech for a specified duration to indicate a pause.
 
         Raises:
-            Exception: If there is an issue with audio processing or WebSocket communication.
+            Exception: If there is an issue with audio processing or audio_channel communication.
 
         """
         while True:
@@ -587,11 +587,11 @@ class ServeClient:
         """
         Notify the client of disconnection and send a disconnect message.
 
-        This method sends a disconnect message to the client via the WebSocket connection to notify them
+        This method sends a disconnect message to the client via the audio_channel connection to notify them
         that the transcription service is disconnecting gracefully.
 
         """
-        self.websocket.send(
+        self.audio_channel.send(
             json.dumps({"uid": self.client_uid, "message": self.DISCONNECT})
         )
 
