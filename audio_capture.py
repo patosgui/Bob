@@ -75,9 +75,7 @@ class WebSocketAudioChannel(AudioChannel):
             self.ws_thread.setDaemon(True)
             self.ws_thread.start()
         else:
-            self.ws_thread = threading.Thread(
-                target=self.client_socket.recv_callback
-            )
+            self.ws_thread = threading.Thread(target=self.recv_thread)
             self.ws_thread.setDaemon(True)
             self.ws_thread.start()
 
@@ -154,12 +152,9 @@ class WebSocketAudioChannel(AudioChannel):
             )
         )
 
-    def recv_callback(self):
-        options = websocket.recv()
-        options = json.loads(options)
-
-        # Put the received data into a queue
-        self.audio_queue.put_nowait(websocket.recv())
+    def recv_callback(self, ws):
+        while True:
+            self.audio_queue.put_nowait(ws.recv())
 
     def recv(self):
         return self.audio_queue.get()
