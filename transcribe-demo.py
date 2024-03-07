@@ -50,7 +50,6 @@ class Client:
     """
 
     INSTANCES = {}
-
     def __init__(
         self,
         device_number: int = 1,
@@ -183,6 +182,8 @@ class Client:
             )
         )
 
+        self.recording = True
+
     @staticmethod
     def bytes_to_float_array(audio_bytes):
         """
@@ -304,12 +305,13 @@ class Client:
             wavfile.setframerate(self.rate)
             wavfile.writeframes(frames)
 
-    def wait_server_ready(self):
+    def wait_server_ready_and_record(self):
         logging.info("Waiting for server ready ...")
         # The on_message callback turns the self.recording to true
-        while not client.recording:
+        while not self.recording:
             pass
         logging.info("Server Ready!")
+        self.record()
 
     def record(self, out_file="output_recording.wav"):
         """
@@ -404,19 +406,18 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 
-device_number = search_microphone(device_name="Microphone (Arctis Nova 7)")
+dev_number= search_microphone(device_name="Microphone (PowerConf S3)")
 
 client = Client(
-    "127.0.0.1",
-    5676,
-    device_number=device_number,
+    host="127.0.0.1",
+    port=5676,
+    device_number=dev_number,
     is_multilingual=False,
     lang="en",
     translate=True,
 )
 
-client.wait_server_ready()
-client.record()
+client.wait_server_ready_and_record()
 
 # client.play_file("C:\\Users\\lopes\\Downloads\\stereo_file.wav")
 # client.play_file("C:\\Users\\lopes\\Downloads\\chunks\\hey_bob_office_light.wav")
