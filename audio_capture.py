@@ -112,14 +112,7 @@ class WebSocketAudioChannel(AudioChannel):
             message (str): The received message from the server.
 
         """
-        message = json.loads(message)
-        if self.uid != message.get("uid"):
-            logging.error("invalid client uid")
-            return
-
-        if "message" in message.keys() and message["message"] == "SERVER_READY":
-            self.recording = True
-            return
+        pass
 
     def on_error(self, ws, error):
         logging.error(error)
@@ -163,12 +156,12 @@ class WebSocketAudioChannel(AudioChannel):
         return self.client_socket
 
 
-def search_microphone(device_name: str, timeout=600) -> Optional[int]:
+def search_device(device_name: str, timeout=600) -> Optional[int]:
     p = pyaudio.PyAudio()
 
     start_time = time.time()
     while time.time() - start_time < timeout:
-        logging.info(f'Searching for microphone: "{device_name}"')
+        logging.info(f'Searching for device: "{device_name}"')
         for i in range(p.get_device_count()):
             device_info = p.get_device_info_by_index(i)
             if device_info["name"] == device_name:
@@ -177,6 +170,14 @@ def search_microphone(device_name: str, timeout=600) -> Optional[int]:
         time.sleep(10)
 
     return None
+
+def reproduce_wav(wav, sample_rate):
+    device_idx = search_device("Speakers (PowerConf S3)")
+    p = pyaudio.PyAudio()
+    stream = p.open(format=pyaudio.paFloat32,channels=1,rate=sample_rate,input=False,frames_per_buffer=1024, output_device_index=device_idx, output=True)
+    float32_array = np.array(wav, dtype=np.float32)
+    float32_bytes = float32_array.tobytes()
+    stream.write(float32_bytes)
 
 
 class Client:
@@ -385,9 +386,7 @@ class Client:
 
         self.on_open()
         try:
-            for _ in range(
-                0, int(self.rate / self.chunk * self.record_seconds)
-            ):
+            while True:
                 data = self.stream.read(self.chunk)
                 self.frames += data
 

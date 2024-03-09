@@ -1,6 +1,5 @@
 from abc import abstractmethod
-import asyncio
-import logging
+import audio_capture
 import ai_engine
 from audio_capture import AudioChannel
 import light_manager
@@ -41,11 +40,13 @@ class Debug:
 class CommandProcessor:
     def __init__(
         self,
+        tts,
         ai_engine: ai_engine.AIEngine = ai_engine.AIEngine(),
         lm: light_manager.LightManager = light_manager.LightManager(),
         debug: Debug = Debug(),
         trigger: str = "Bob",
     ) -> None:
+        self.tts = tts
         self.debug = debug
         self.trigger = trigger
         self.aie = ai_engine
@@ -68,6 +69,8 @@ class CommandProcessor:
             self.debug.gotText(text)
             if self.trigger in text:
                 try:
+                    wav = self.tts.tts(text="Hi! How can I help you?")
+                    audio_capture.reproduce_wav(wav,self.tts.synthesizer.output_sample_rate)
                     self.debug.triggerAI()
                     # wait 10 second for a command
                     cmd = self.wait_for_new_data(timeout=10)
@@ -85,18 +88,18 @@ class CommandProcessor:
         #    await lm.set_light_on()
 
         if re.search("command.*entrance01.*on", output):
-            logging.info("Turning entrance light on!")
             self.lm.on(7, True)
 
         if re.search("command.*entrance01.*off", output):
-            logging.info("Turning entrance light off!")
             self.lm.on(7, False)
 
         if re.search("command.*office01.*on", output):
             self.lm.on(6, True)
+            self.lm.on(8, True)
 
         if re.search("command.*office01.*off", output):
             self.lm.on(6, False)
+            self.lm.on(8, False)
 
     def wait_for_new_data(self, timeout=None):
         data = text_queue.get(timeout=timeout)

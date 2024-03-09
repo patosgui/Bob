@@ -4,7 +4,7 @@ import argparse
 import asyncio
 import logging
 import threading
-import time
+from TTS.api import TTS
 
 import server
 import audio_capture
@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
     audio_channel = None
     if args.record:
-        device_number = audio_capture.search_microphone(
+        device_number = audio_capture.search_device(
             device_name="Microphone (PowerConf S3)"
         )
         audio_channel = audio_capture.LocalAudioChannel()
@@ -65,11 +65,14 @@ if __name__ == "__main__":
 
         thread = threading.Thread(target=client.record)
         thread.start()
+
     else:
         audio_channel = audio_capture.WebSocketAudioChannel(
             host="127.0.0.1", port=5676, send=False
         )
 
     log = Logger(logging)
-    cmd_processor = server.CommandProcessor(debug=log)
+
+    tts = TTS("tts_models/en/ljspeech/tacotron2-DDC").to("cpu")
+    cmd_processor = server.CommandProcessor(debug=log, tts=tts)
     res1 = asyncio.run(cmd_processor.start(audio_channel=audio_channel))
