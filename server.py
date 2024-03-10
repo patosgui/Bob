@@ -61,7 +61,6 @@ class CommandProcessor:
         )
         thread = threading.Thread(target=server.recv_audio)
         thread.start()
-
         self.debug.initializationOver()
 
         while True:
@@ -69,8 +68,9 @@ class CommandProcessor:
             self.debug.gotText(text)
             if self.trigger in text:
                 try:
-                    wav = self.tts.tts(text="Hi! How can I help you?")
-                    audio_capture.reproduce_wav(wav,self.tts.synthesizer.output_sample_rate)
+                    if self.tts:
+                        wav = self.tts.tts(text="Yes please.")
+                        audio_capture.reproduce_wav(wav,self.tts.synthesizer.output_sample_rate)
                     self.debug.triggerAI()
                     # wait 10 second for a command
                     cmd = self.wait_for_new_data(timeout=10)
@@ -103,4 +103,4 @@ class CommandProcessor:
 
     def wait_for_new_data(self, timeout=None):
         data = text_queue.get(timeout=timeout)
-        return data[0]["text"]
+        return data

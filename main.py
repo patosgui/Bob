@@ -47,6 +47,7 @@ if __name__ == "__main__":
         encoding="utf-8",
         level=logging.INFO,
         handlers=[logging.StreamHandler()],
+        force=True 
     )
 
     audio_channel = None

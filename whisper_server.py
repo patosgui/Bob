@@ -13,11 +13,11 @@ import torch
 import numpy as np
 import time
 import queue
-from whisper_live.transcriber import WhisperModel
 from whisper_live.vad import VoiceActivityDetection
 
 from enum import Enum
 
+from faster_whisper import WhisperModel
 
 class AudioStatus(Enum):
     LISTENING = 1
@@ -177,9 +177,9 @@ class TranscriptionServer:
                     logging.error(e)
                     return
 
-                logging.info(
-                    f"Audio frame - size: {len(frame_np)} prob: {speech_prob}"
-                )
+                #logging.info(
+                #    f"Audio frame - size: {len(frame_np)} prob: {speech_prob}"
+                #)
 
                 if state == AudioStatus.LISTENING:
                     if self.shouldTurnSpeechRecOff(speech_prob):
@@ -308,13 +308,7 @@ class ServeClient:
         self.language = language if multilingual else "en"
         self.task = task
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.transcriber = WhisperModel(
-            "small" if multilingual else "small.en",
-            device=device,
-            compute_type="int8" if device == "cpu" else "float16",
-            local_files_only=False,
-        )
-
+        self.transcriber = WhisperModel("small", device="cpu", compute_type="float32")
         self.timestamp_offset = 0.0
         self.frames_np = None
         self.frames_offset = 0.0
@@ -434,66 +428,28 @@ class ServeClient:
                 ].shape[0]
                 > 25 * self.RATE
             ):
+                logging.info("Do something weird!")
                 duration = self.frames_np.shape[0] / self.RATE
                 self.timestamp_offset = self.frames_offset + duration - 5
 
-            samples_take = max(
-                0, (self.timestamp_offset - self.frames_offset) * self.RATE
-            )
-            input_bytes = self.frames_np[int(samples_take) :].copy()
+            input_bytes = self.frames_np.copy()
+            samples_take = len(input_bytes)
             duration = input_bytes.shape[0] / self.RATE
             logging.info(
                 f"Timestamp offset: {str(self.timestamp_offset)} Frames offset:  {str(self.frames_offset)} Samples take: {str(samples_take)} Input Bytes: {input_bytes} Duration: {duration}"
             )
             if duration < 0.3:
+                logging.info("Skipping transcribing!")
                 continue
             try:
-                input_sample = input_bytes.copy()
-                # set previous complete segment as initial prompt
-                if len(self.text) and self.text[-1] != "":
-                    initial_prompt = self.text[-1]
-                else:
-                    initial_prompt = None
-
                 # whisper transcribe with prompt
-                logging.info("Transcribing")
-                result = self.transcriber.transcribe(
-                    input_sample,
-                    initial_prompt=initial_prompt,
-                    language=self.language,
-                    task=self.task,
-                )
-
-                if len(result):
-                    self.t_start = None
-                    last_segment = self.update_segments(result, duration)
-                    if len(self.transcript) < self.send_last_n_segments:
-                        segments = self.transcript
-                    else:
-                        segments = self.transcript[-self.send_last_n_segments :]
-                    if last_segment is not None:
-                        segments = segments + [last_segment]
-
-                    self.text_queue.put_nowait(segments)
-                else:
-                    # show previous output if there is pause i.e. no output from whisper
-                    segments = []
-                    if self.t_start is None:
-                        self.t_start = time.time()
-                    if time.time() - self.t_start < self.show_prev_out_thresh:
-                        if len(self.transcript) < self.send_last_n_segments:
-                            segments = self.transcript
-                        else:
-                            segments = self.transcript[
-                                -self.send_last_n_segments :
-                            ]
-
-                    # add a blank if there is no speech for 3 seconds
-                    if len(self.text) and self.text[-1] != "":
-                        if time.time() - self.t_start > self.add_pause_thresh:
-                            self.text.append("")
-
-                    self.text_queue.put_nowait(segments)
+                logging.info("Transcribing ")
+                float32_array = np.array(input_bytes, dtype=np.float32)
+                segments, info = self.transcriber.transcribe(float32_array, beam_size=5)
+                print("Detected language '%s' with probability %f" % (info.language, info.language_probability))
+                for segment in segments:
+                    print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+                self.text_queue.put_nowait(segment.text)
 
             except Exception as e:
                 logging.error(f"[ERROR]: {e}")
