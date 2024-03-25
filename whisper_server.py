@@ -19,6 +19,7 @@ from enum import Enum
 
 from faster_whisper import WhisperModel
 
+
 class AudioStatus(Enum):
     LISTENING = 1
     WAIT_FOR_VOICE = 2
@@ -177,9 +178,9 @@ class TranscriptionServer:
                     logging.error(e)
                     return
 
-                #logging.info(
-                #    f"Audio frame - size: {len(frame_np)} prob: {speech_prob}"
-                #)
+                logging.info(
+                    f"Audio frame - size: {len(frame_np)} prob: {speech_prob}"
+                )
 
                 if state == AudioStatus.LISTENING:
                     if self.shouldTurnSpeechRecOff(speech_prob):
@@ -308,7 +309,9 @@ class ServeClient:
         self.language = language if multilingual else "en"
         self.task = task
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.transcriber = WhisperModel("small", device="cpu", compute_type="float32")
+        self.transcriber = WhisperModel(
+            "small", device="cpu", compute_type="float32"
+        )
         self.timestamp_offset = 0.0
         self.frames_np = None
         self.frames_offset = 0.0
@@ -445,10 +448,18 @@ class ServeClient:
                 # whisper transcribe with prompt
                 logging.info("Transcribing ")
                 float32_array = np.array(input_bytes, dtype=np.float32)
-                segments, info = self.transcriber.transcribe(float32_array, beam_size=5)
-                print("Detected language '%s' with probability %f" % (info.language, info.language_probability))
+                segments, info = self.transcriber.transcribe(
+                    float32_array, beam_size=5
+                )
+                print(
+                    "Detected language '%s' with probability %f"
+                    % (info.language, info.language_probability)
+                )
                 for segment in segments:
-                    print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+                    print(
+                        "[%.2fs -> %.2fs] %s"
+                        % (segment.start, segment.end, segment.text)
+                    )
                 self.text_queue.put_nowait(segment.text)
 
             except Exception as e:
