@@ -26,8 +26,8 @@ device_number = audio_capture.search_device(
 )
 
 audio_channel = audio_capture.WebSocketAudioChannel(
-            host="127.0.0.1", port=5676, send=True
-        )
+    host="127.0.0.1", port=5676, send=True
+)
 
 client = audio_capture.Client(
     device_number=device_number,

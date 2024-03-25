@@ -21,7 +21,7 @@ class Logger(server.Debug):
         logging.info(f"Rcvd text: {text}")
 
     def triggerAI(self):
-        logging.info(f"Listening for command!")
+        logging.info("Listening for command!")
 
     def processingCommand(self, text: str):
         self.gotText(text)
