@@ -13,6 +13,7 @@ import websocket
 import uuid
 import time
 import logging
+import librosa
 
 count = 0
 
@@ -156,6 +157,12 @@ class WebSocketAudioChannel(AudioChannel):
         return self.client_socket
 
 
+@dataclass
+class Device:
+    device_number: int
+    sample_rate: int
+
+
 def search_device(device_name: str, timeout=600) -> Optional[int]:
     p = pyaudio.PyAudio()
 
@@ -167,17 +174,31 @@ def search_device(device_name: str, timeout=600) -> Optional[int]:
             logging.info(device_info)
             if device_name in device_info["name"]:
                 logging.info("Microphone found!")
-                return i
+                return Device(i, int(device_info["defaultSampleRate"]))
         time.sleep(10)
 
     return None
 
+
 def reproduce_wav(wav, sample_rate):
-    device_idx = search_device("Speakers (PowerConf S3)")
+    # FIXME: Put this at high level
+    device = search_device("PowerConf S3")
     p = pyaudio.PyAudio()
-    stream = p.open(format=pyaudio.paFloat32,channels=1,rate=sample_rate,input=False,frames_per_buffer=1024, output_device_index=device_idx, output=True)
+    stream = p.open(
+        format=pyaudio.paFloat32,
+        channels=1,
+        rate=device.sample_rate,
+        input=False,
+        frames_per_buffer=1024,
+        output_device_index=device.device_number,
+        output=True,
+    )
     float32_array = np.array(wav, dtype=np.float32)
-    float32_bytes = float32_array.tobytes()
+
+    resampled_data = librosa.resample(
+        float32_array, orig_sr=sample_rate, target_sr=device.sample_rate
+    )
+    float32_bytes = resampled_data.tobytes()
     stream.write(float32_bytes)
 
 
@@ -190,10 +211,8 @@ class Client:
 
     def __init__(
         self,
+        device: Device,
         audio_channel: AudioChannel,
-        device_number: int = 1,
-        host: str = None,
-        port: int = None,
         is_multilingual: bool = False,
         lang: str = None,
         translate: bool = False,
@@ -212,11 +231,11 @@ class Client:
             lang (str, optional): The selected language for transcription when multilingual is disabled. Default is None.
             translate (bool, optional): Specifies if the task is translation. Default is False.
         """
-        self.chunk = 2048
+        self.chunk = 8192
         self.format = pyaudio.paInt16
         self.channels = 1
+        self.device_rate = device.sample_rate
         self.rate = 16000
-        self.record_seconds = 60000
         self.recording = False
         self.multilingual = False
         self.language = None
@@ -233,19 +252,19 @@ class Client:
         self.timestamp_offset = 0.0
         self.audio_bytes = None
         self.p = pyaudio.PyAudio()
+        print("Using sample rate " + str(device.sample_rate))
         self.stream = self.p.open(
             format=self.format,
             channels=self.channels,
-            rate=self.rate,
+            rate=device.sample_rate,
             input=True,
             frames_per_buffer=self.chunk,
-            input_device_index=device_number,
+            input_device_index=device.device_number,
         )
         self.audio_channel = audio_channel
 
         Client.INSTANCES[self.uid] = self
 
-        self.frames = b""
         logging.info("* recording")
 
     @staticmethod
@@ -389,10 +408,14 @@ class Client:
         try:
             while True:
                 data = self.stream.read(self.chunk)
-                self.frames += data
 
                 audio_array = Client.bytes_to_float_array(data)
-                self.audio_channel.send(audio_array.tobytes())
+
+                resampled_data = librosa.resample(
+                    audio_array, orig_sr=self.device_rate, target_sr=self.rate
+                )
+
+                self.audio_channel.send(resampled_data.tobytes())
 
         except KeyboardInterrupt:
             self.stream.stop_stream()

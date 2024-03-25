@@ -47,17 +47,15 @@ if __name__ == "__main__":
         encoding="utf-8",
         level=logging.INFO,
         handlers=[logging.StreamHandler()],
-        force=True 
+        force=True,
     )
 
     audio_channel = None
     if args.record:
-        device_number = audio_capture.search_device(
-            device_name="PowerConf S3"
-        )
+        device = audio_capture.search_device(device_name="PowerConf S3")
         audio_channel = audio_capture.LocalAudioChannel()
         client = audio_capture.Client(
-            device_number=device_number,
+            device=device,
             audio_channel=audio_channel,
             is_multilingual=False,
             lang="en",
