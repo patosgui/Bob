@@ -7,7 +7,7 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
     gnupg2 lld zip \
     g++ \ 
     graphviz git cmake ninja-build \
-    python3 python3-venv tree \
+    python3 python3-venv python3-dev tree \
     xz-utils zip locales gpg dos2unix
  
 # Install Clang/LLVM

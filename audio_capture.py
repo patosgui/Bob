@@ -164,7 +164,8 @@ def search_device(device_name: str, timeout=600) -> Optional[int]:
         logging.info(f'Searching for device: "{device_name}"')
         for i in range(p.get_device_count()):
             device_info = p.get_device_info_by_index(i)
-            if device_info["name"] == device_name:
+            logging.info(device_info)
+            if device_name in device_info["name"]:
                 logging.info("Microphone found!")
                 return i
         time.sleep(10)

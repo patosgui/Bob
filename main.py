@@ -53,7 +53,7 @@ if __name__ == "__main__":
     audio_channel = None
     if args.record:
         device_number = audio_capture.search_device(
-            device_name="Microphone (PowerConf S3)"
+            device_name="PowerConf S3"
         )
         audio_channel = audio_capture.LocalAudioChannel()
         client = audio_capture.Client(
