@@ -180,9 +180,7 @@ def search_device(device_name: str, timeout=600) -> Optional[int]:
     return None
 
 
-def reproduce_wav(wav, sample_rate):
-    # FIXME: Put this at high level
-    device = search_device("PowerConf S3")
+def reproduce_wav(wav, sample_rate: int, device: Device):
     p = pyaudio.PyAudio()
     stream = p.open(
         format=pyaudio.paFloat32,

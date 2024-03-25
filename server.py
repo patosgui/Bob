@@ -41,6 +41,7 @@ class CommandProcessor:
     def __init__(
         self,
         tts,
+        device: audio_capture.Device,
         ai_engine: ai_engine.AIEngine = ai_engine.AIEngine(),
         lm: light_manager.LightManager = light_manager.LightManager(),
         debug: Debug = Debug(),
@@ -51,6 +52,7 @@ class CommandProcessor:
         self.trigger = trigger
         self.aie = ai_engine
         self.lm = lm
+        self.device = device
 
     async def start(self, audio_channel: AudioChannel):
         # Run the voice detection as a thread
@@ -70,7 +72,11 @@ class CommandProcessor:
                 try:
                     if self.tts:
                         wav = self.tts.tts(text="Yes please.")
-                        audio_capture.reproduce_wav(wav,self.tts.synthesizer.output_sample_rate)
+                        audio_capture.reproduce_wav(
+                            wav,
+                            self.device,
+                            self.tts.synthesizer.output_sample_rate,
+                        )
                     self.debug.triggerAI()
                     # wait 10 second for a command
                     cmd = self.wait_for_new_data(timeout=10)

@@ -31,14 +31,20 @@ class Logger(server.Debug):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="govee_api_laggat examples")
+    parser = argparse.ArgumentParser(description="Home automation bot")
     parser.add_argument(
         "--api-key",
         dest="api_key",
         type=str,
         default="72aa9b5d-2670-4d08-8b22-e8d0a48f7897",
     )
-    parser.add_argument("--record", action="store_true", default=False)
+    parser.add_argument(
+        "--device",
+        dest="device",
+        type=str,
+        default="PowerConf S3",
+        help="The device used to capture and emit audio. The same device is used for both audio input and output",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -50,28 +56,21 @@ if __name__ == "__main__":
         force=True,
     )
 
-    audio_channel = None
-    if args.record:
-        device = audio_capture.search_device(device_name="PowerConf S3")
-        audio_channel = audio_capture.LocalAudioChannel()
-        client = audio_capture.Client(
-            device=device,
-            audio_channel=audio_channel,
-            is_multilingual=False,
-            lang="en",
-            translate=True,
-        )
+    device = audio_capture.search_device(device_name=args.device)
+    audio_channel = audio_capture.LocalAudioChannel()
+    client = audio_capture.Client(
+        device=device,
+        audio_channel=audio_channel,
+        is_multilingual=False,
+        lang="en",
+        translate=True,
+    )
 
-        thread = threading.Thread(target=client.record)
-        thread.start()
-
-    else:
-        audio_channel = audio_capture.WebSocketAudioChannel(
-            host="127.0.0.1", port=5676, send=False
-        )
+    thread = threading.Thread(target=client.record)
+    thread.start()
 
     log = Logger(logging)
 
     tts = TTS("tts_models/en/ljspeech/tacotron2-DDC").to("cpu")
-    cmd_processor = server.CommandProcessor(debug=log, tts=tts)
+    cmd_processor = server.CommandProcessor(debug=log, tts=tts, device=device)
     res1 = asyncio.run(cmd_processor.start(audio_channel=audio_channel))
