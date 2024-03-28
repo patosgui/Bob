@@ -7,7 +7,7 @@ import threading
 from TTS.api import TTS
 
 import server
-import audio_capture
+import audio_client
 
 
 class Logger(server.Debug):
@@ -56,21 +56,20 @@ if __name__ == "__main__":
         force=True,
     )
 
-    device = audio_capture.search_device(device_name=args.device)
-    audio_channel = audio_capture.LocalAudioChannel()
-    client = audio_capture.Client(
-        device=device,
-        audio_channel=audio_channel,
-        is_multilingual=False,
-        lang="en",
-        translate=True,
+    audio_device = audio_client.get_device(device_name=args.device)
+
+    client = audio_client.AudioClient(
+        device=audio_device, is_multilingual=False, lang="en", translate=True
     )
 
-    thread = threading.Thread(target=client.record)
+    audio_channel = audio_client.LocalAudioChannel()
+    thread = threading.Thread(target=client.record, args=(audio_channel,))
     thread.start()
 
     log = Logger(logging)
 
     tts = TTS("tts_models/en/ljspeech/tacotron2-DDC").to("cpu")
-    cmd_processor = server.CommandProcessor(debug=log, tts=tts, device=device)
+    cmd_processor = server.CommandProcessor(
+        debug=log, tts=tts, audio_client=client
+    )
     res1 = asyncio.run(cmd_processor.start(audio_channel=audio_channel))
