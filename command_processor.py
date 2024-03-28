@@ -49,30 +49,32 @@ class CommandProcessor:
         self.audio_client = audio_client
         self.text_queue = text_queue
 
+    def process_once(self):
+        text = self.wait_for_new_data()
+        self.debug.gotText(text)
+        if self.trigger in text:
+            try:
+                if self.tts:
+                    wav = self.tts.tts(text="Yes please.")
+                    self.audio_client.reproduce(
+                        wav, self.tts.synthesizer.output_sample_rate
+                    )
+                self.debug.triggerAI()
+                # wait 10 second for a command
+                cmd = self.wait_for_new_data(timeout=10)
+                self.debug.processingCommand(cmd)
+                self.process(cmd)
+            except queue.Empty as e:
+                # Ignore if command was not given
+                pass
+
     def start(self):
         while True:
-            text = self.wait_for_new_data()
-            self.debug.gotText(text)
-            if self.trigger in text:
-                try:
-                    if self.tts:
-                        wav = self.tts.tts(text="Yes please.")
-                        self.audio_client.reproduce(
-                            wav, self.tts.synthesizer.output_sample_rate
-                        )
-                    self.debug.triggerAI()
-                    # wait 10 second for a command
-                    cmd = self.wait_for_new_data(timeout=10)
-                    self.debug.processingCommand(cmd)
-                    self.process(cmd)
-                except queue.Empty as e:
-                    # Ignore if command was not given
-                    pass
+            self.process_once()
 
     def process(self, cmd):
         output = self.aie.predict(cmd, 180)
         self.debug.inferenceResult(output)
-
         # if "kitchen01" in output:
         #    await lm.set_light_on()
 
