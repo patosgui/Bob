@@ -1,4 +1,4 @@
-from whisper_server import TranscriptionServer
+from transcription_server import TranscriptionServer
 
 import time
 import logging
@@ -6,7 +6,7 @@ from unittest import mock
 from unittest.mock import patch
 from queue import Queue
 import threading
-import audio_capture
+import audio_client
 
 FAKE_CLIENT_DATA = [
     '{"uid": "53d0a251-808e-4531-861b-4d0c95dcbb30", "multilingual": true, "language": "en", "task": "translate"}',
@@ -32,7 +32,7 @@ def test_recv_audio_no_voice(speech_prob, caplog):
     text_queue = Queue()
     mock_vad_model = mock.Mock()
 
-    local_audio_channel = audio_capture.LocalAudioChannel()
+    local_audio_channel = audio_client.LocalAudioChannel()
 
     ts = TranscriptionServer(
         vad_model=mock_vad_model,
@@ -45,7 +45,7 @@ def test_recv_audio_no_voice(speech_prob, caplog):
     local_audio_channel.send(FAKE_CLIENT_DATA[1])
 
     with caplog.at_level(logging.DEBUG):
-        thread = threading.Thread(target=ts.recv_audio)
+        thread = threading.Thread(target=ts.recv_audio, daemon=True)
         thread.start()
         # Wait for result to be ready. Not ideal
         time.sleep(1)
@@ -60,7 +60,7 @@ def test_recv_audio_voice(shoud_turn_off, speech_prob, caplog):
     text_queue = Queue()
     mock_vad_model = mock.Mock()
 
-    local_audio_channel = audio_capture.LocalAudioChannel()
+    local_audio_channel = audio_client.LocalAudioChannel()
 
     ts = TranscriptionServer(
         vad_model=mock_vad_model,
@@ -76,7 +76,7 @@ def test_recv_audio_voice(shoud_turn_off, speech_prob, caplog):
     shoud_turn_off.return_value = True
 
     with caplog.at_level(logging.DEBUG):
-        thread = threading.Thread(target=ts.recv_audio)
+        thread = threading.Thread(target=ts.recv_audio, daemon=True)
         thread.start()
         time.sleep(1)
         assert "New client connected" in caplog.text
