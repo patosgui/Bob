@@ -159,6 +159,19 @@ class AudioClient:
             )
         )
 
+    def record_once(self, stream, audio_channel):
+        data = stream.read(self.chunk)
+
+        audio_array = AudioClient.bytes_to_float_array(data)
+
+        # Resample to target the 16kHz frequency for which the models
+        # were trained
+        resampled_data = librosa.resample(
+            audio_array, orig_sr=self.device.sample_rate, target_sr=self.rate
+        )
+
+        audio_channel.send(resampled_data.tobytes())
+
     def record(self, audio_channel: AudioChannel):
         """
         Continuously capture data from the input device and stream it to the
@@ -176,25 +189,8 @@ class AudioClient:
         logging.info("* recording")
         self.on_open(audio_channel=audio_channel)
 
-        try:
-            while True:
-                data = stream.read(self.chunk)
-
-                audio_array = AudioClient.bytes_to_float_array(data)
-
-                # Resample to target the 16kHz frequency for which the models
-                # were trained
-                resampled_data = librosa.resample(
-                    audio_array,
-                    orig_sr=self.device.sample_rate,
-                    target_sr=self.rate,
-                )
-
-                audio_channel.send(resampled_data.tobytes())
-
-        except KeyboardInterrupt:
-            stream.stop_stream()
-            stream.close()
+        while True:
+            self.record_once(stream=stream, audio_channel=audio_channel)
 
     def reproduce(self, wav, sample_rate):
         """
@@ -203,6 +199,7 @@ class AudioClient:
 
         # Use a local instance of pyaudio. Is pyaudio thread-safe?
         p = pyaudio.PyAudio()
+        print(type(p))
 
         stream = p.open(
             format=pyaudio.paFloat32,
