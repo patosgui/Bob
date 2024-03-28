@@ -1,33 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
-import asyncio
 import logging
-import threading
-from TTS.api import TTS
-
-import server
 import audio_client
-
-
-class Logger(server.Debug):
-    def __init__(self, log):
-        self.log = log
-
-    def initializationOver(self):
-        logging.info("** Ready **")
-
-    def gotText(self, text: str):
-        logging.info(f"Rcvd text: {text}")
-
-    def triggerAI(self):
-        logging.info("Listening for command!")
-
-    def processingCommand(self, text: str):
-        self.gotText(text)
-
-    def inferenceResult(self, result: str):
-        logging.info(f"** Inference result: {result}")
+import automation_pipeline
 
 
 if __name__ == "__main__":
@@ -57,19 +33,6 @@ if __name__ == "__main__":
     )
 
     audio_device = audio_client.get_device(device_name=args.device)
-
-    client = audio_client.AudioClient(
-        device=audio_device, is_multilingual=False, lang="en", translate=True
+    automation_pipeline.start_pipeline(
+        audio_device=audio_device, log=automation_pipeline.Logger(logging)
     )
-
-    audio_channel = audio_client.LocalAudioChannel()
-    thread = threading.Thread(target=client.record, args=(audio_channel,))
-    thread.start()
-
-    log = Logger(logging)
-
-    tts = TTS("tts_models/en/ljspeech/tacotron2-DDC").to("cpu")
-    cmd_processor = server.CommandProcessor(
-        debug=log, tts=tts, audio_client=client
-    )
-    res1 = asyncio.run(cmd_processor.start(audio_channel=audio_channel))

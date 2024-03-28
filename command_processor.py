@@ -1,17 +1,11 @@
-from abc import abstractmethod
+import re
+import queue
+
 import audio_client
 import ai_engine
 import light_manager
-import threading
-import re
 
-from queue import Queue, Empty
-from whisper_server import TranscriptionServer
-from whisper_live.vad import VoiceActivityDetection
-
-# The text queue used to pass data from the TranscriptionServer for further
-# processing
-text_queue = Queue()
+from abc import abstractmethod
 
 
 class Debug:
@@ -41,6 +35,7 @@ class CommandProcessor:
         self,
         tts,
         audio_client: audio_client.AudioClient,
+        text_queue: queue.Queue,
         ai_engine: ai_engine.AIEngine = ai_engine.AIEngine(),
         lm: light_manager.LightManager = light_manager.LightManager(),
         debug: Debug = Debug(),
@@ -52,18 +47,9 @@ class CommandProcessor:
         self.aie = ai_engine
         self.lm = lm
         self.audio_client = audio_client
+        self.text_queue = text_queue
 
-    async def start(self, audio_channel: audio_client.AudioChannel):
-        # Run the voice detection as a thread
-        server = TranscriptionServer(
-            vad_model=VoiceActivityDetection(),
-            audio_channel=audio_channel,
-            text_queue=text_queue,
-        )
-        thread = threading.Thread(target=server.recv_audio)
-        thread.start()
-        self.debug.initializationOver()
-
+    def start(self):
         while True:
             text = self.wait_for_new_data()
             self.debug.gotText(text)
@@ -79,7 +65,7 @@ class CommandProcessor:
                     cmd = self.wait_for_new_data(timeout=10)
                     self.debug.processingCommand(cmd)
                     self.process(cmd)
-                except Empty as e:
+                except queue.Empty as e:
                     # Ignore if command was not given
                     pass
 
@@ -105,5 +91,5 @@ class CommandProcessor:
             self.lm.on(8, False)
 
     def wait_for_new_data(self, timeout=None):
-        data = text_queue.get(timeout=timeout)
+        data = self.text_queue.get(timeout=timeout)
         return data
