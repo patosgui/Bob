@@ -8,8 +8,10 @@ import time
 from queue import Queue
 
 from TTS.api import TTS
-from whisper_server import TranscriptionServer
 from whisper_live.vad import VoiceActivityDetection
+
+# Based on whisper_live module
+from transcription_server import TranscriptionServer
 
 
 class Logger(command_processor.Debug):
