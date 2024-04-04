@@ -14,6 +14,7 @@ import json
 import uuid
 import logging
 import librosa
+import wave
 
 from abc import ABC, abstractmethod
 
@@ -66,7 +67,7 @@ def list_devices():
         logging.info(device_info)
 
 
-def get_device(device_name: str) -> Optional[int]:
+def get_device(device_name: str) -> Optional[Device]:
     p = pyaudio.PyAudio()
 
     logging.info(f'Searching for device: "{device_name}"')
@@ -77,7 +78,8 @@ def get_device(device_name: str) -> Optional[int]:
             logging.info(device_info)
             return Device(i, int(device_info["defaultSampleRate"]))
 
-    return None
+    logging.info(list_devices())
+    raise Exception(f"Device {device_name} not found.")
 
 
 class AudioClient:
@@ -199,7 +201,6 @@ class AudioClient:
 
         # Use a local instance of pyaudio. Is pyaudio thread-safe?
         p = pyaudio.PyAudio()
-        print(type(p))
 
         stream = p.open(
             format=pyaudio.paFloat32,
@@ -220,3 +221,71 @@ class AudioClient:
 
         float32_bytes = resampled_data.tobytes()
         stream.write(float32_bytes)
+
+    def read_wav_file(self, audio_channel: AudioChannel, file_path):
+        self.on_open(audio_channel=audio_channel)
+
+        wav, sr = librosa.load(file_path)
+        # librosa returns floats between -1 and 1. Multiply by 32767 to get int16 values
+        wav = (wav * 32767).astype(np.int16)
+
+        audio_array = AudioClient.bytes_to_float_array(wav)
+
+        # Is this really required or does librosa make the downsampling?
+        resampled_data = librosa.resample(
+            audio_array, orig_sr=sr, target_sr=self.rate
+        )
+        self.chunk = 2048
+
+        for i in range(0, len(resampled_data), self.chunk):
+            chunk = resampled_data[i : i + self.chunk]
+            audio_channel.send(chunk.tobytes())
+
+
+class AudioRecorder:
+    def __init__(self, device: Device, chunk=48000):
+        self.device_number = device.device_number
+        self.device_sample_rate = device.sample_rate
+        self.chunk = chunk
+        self.p = pyaudio.PyAudio()
+        self.frames = []
+
+    @staticmethod
+    def bytes_to_float_array(data):
+        return np.frombuffer(data, dtype=np.float32)
+
+    def record(self, out_file="output_recording.wav"):
+        stream = self.p.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=self.device_sample_rate,
+            input=True,
+            frames_per_buffer=self.chunk,
+            input_device_index=self.device_number,
+        )
+
+        logging.info("[INFO]: Recording started")
+        try:
+            while True:
+                data = stream.read(self.chunk)
+                self.frames.append(data)
+
+        except KeyboardInterrupt:
+            logging.info("[INFO]: Recording stopped")
+            stream.stop_stream()
+            stream.close()
+            self.p.terminate()
+
+            # Concatenate all frames into a single audio array
+            audio_data = b"".join(self.frames)
+            # Convert to Flaot32
+            audio_data = AudioRecorder.bytes_to_float_array(audio_data)
+
+            wf = wave.open(out_file, "wb")
+            wf.setnchannels(1)
+            wf.setsampwidth(self.p.get_sample_size(pyaudio.paInt16))
+            wf.setframerate(self.device_sample_rate)
+            wf.writeframes(b"".join(self.frames))
+            wf.close()
+
+            logging.info(f"[INFO]: Recording saved to {out_file}")

@@ -14,12 +14,19 @@ if __name__ == "__main__":
         type=str,
         default="72aa9b5d-2670-4d08-8b22-e8d0a48f7897",
     )
-    parser.add_argument(
+
+    subparsers = parser.add_subparsers(dest="input_source")
+    microphone_parser = subparsers.add_parser("microphone")
+    microphone_parser.add_argument(
         "--device",
         dest="device",
         type=str,
         default="PowerConf S3",
         help="The device used to capture and emit audio. The same device is used for both audio input and output",
+    )
+    wav_parser = subparsers.add_parser("wav")
+    wav_parser.add_argument(
+        "--wav-file", dest="wav_file", type=str, help="The file to play"
     )
     args = parser.parse_args()
 
@@ -32,7 +39,14 @@ if __name__ == "__main__":
         force=True,
     )
 
-    audio_device = audio_client.get_device(device_name=args.device)
-    automation_pipeline.start_pipeline(
-        audio_device=audio_device, log=automation_pipeline.Logger(logging)
-    )
+    if args.input_source == "microphone":
+        audio_device = audio_client.get_device(device_name=args.device)
+        automation_pipeline.start_pipeline(
+            audio_device=audio_device, log=automation_pipeline.Logger(logging)
+        )
+    elif args.input_source == "wav":
+        # elif args.input_source == 'wav':
+        #    audio_device = audio_client.get_device(device_name=args.wav_file)
+        automation_pipeline.start_pipeline(
+            audio_device=args.wav_file, log=automation_pipeline.Logger(logging)
+        )

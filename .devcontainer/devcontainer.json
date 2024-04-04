@@ -15,7 +15,8 @@
 				"ms-vscode.cmake-tools",
 				"eamodio.gitlens",
 				"vadimcn.vscode-lldb",
-				"tintinweb.graphviz-interactive-preview"
+				"tintinweb.graphviz-interactive-preview",
+				"sourcegraph.cody-ai"
 			],
 			"settings": {
 				// Use zsh on the integrated terminals
