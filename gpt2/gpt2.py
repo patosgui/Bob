@@ -123,6 +123,7 @@ def train(
         per_device_train_batch_size=per_device_train_batch_size,
         num_train_epochs=num_train_epochs,
         evaluation_strategy="epoch",
+        learning_rate=1e-4,
     )
 
     def compute_metrics(eval_pred):

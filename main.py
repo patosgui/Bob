@@ -42,7 +42,7 @@ if __name__ == "__main__":
     if args.input_source == "microphone":
         audio_dev = audio_device.get_device(device_name=args.device)
         automation_pipeline.start_pipeline(
-            audio_device=audio_dev, log=automation_pipeline.Logger(logging)
+            audio_dev=audio_dev, log=automation_pipeline.Logger(logging)
         )
     elif args.input_source == "wav":
         automation_pipeline.start_pipeline(

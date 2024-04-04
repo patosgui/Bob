@@ -92,6 +92,14 @@ class CommandProcessor:
             self.lm.on(6, False)
             self.lm.on(8, False)
 
+        if re.search("command.*livingroom01.*off", output):
+            self.lm.on(1, False)
+            self.lm.on(5, False)
+
+        if re.search("command.*livingroom01.*on", output):
+            self.lm.on(1, True)
+            self.lm.on(5, True)
+
     def wait_for_new_data(self, timeout=None):
         data = self.text_queue.get(timeout=timeout)
         return data

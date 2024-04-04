@@ -12,3 +12,10 @@ Please turn the entrance light on. #command: turn entrance01 on#<|endoftext|>
 Can you turn the entrace light off? #command: turn entrance01 off#<|endoftext|>
 Can you turn the entrace light on? #command: turn entrance01 on#<|endoftext|>
 You would be awesome if you would turn the entrance light on? #command: turn entrance01 on#<|endoftext|>
+Can you turn the cozy lights on? #command: turn livingroom01 on#<|endoftext|>
+Would you turn the cozy lights on? #command: turn livingroom01 on#<|endoftext|>
+Would you turn the cozy lights off? #command: turn livingroom01 off#<|endoftext|>
+Cozy lights off. #command: turn livingroom01 off#<|endoftext|>
+Cozy lights on. #command: turn livingroom01 on#<|endoftext|>
+Please turn cozy lights on. #command: turn livingroom01 on#<|endoftext|>
+Please turn cozy lights off. #command: turn livingroom01 off#<|endoftext|>
