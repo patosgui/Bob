@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import command_processor
 import audio_client
+import audio_device
 import ai_engine
 import light_manager
 
@@ -16,7 +17,7 @@ def test_ai_trigger(mock_on, mock_predict):
 
     tts = mock.Mock()
 
-    device = audio_client.Device(1, 48000)
+    device = audio_device.Device(1, 48000)
     client = audio_client.AudioClient(device=device)
 
     text_queue = queue.Queue()
@@ -43,7 +44,7 @@ def test_ai_trigger(mock_on, mock_predict):
 @patch.object(light_manager.LightManager, "on")
 def test_no_trigger_in_text(mock_on, mock_predict):
     tts = mock.Mock()
-    device = audio_client.Device(1, 48000)
+    device = audio_device.Device(1, 48000)
     client = audio_client.AudioClient(device=device)
     text_queue = queue.Queue()
     text_queue.put("Hey, Alice!")
@@ -61,7 +62,7 @@ def test_no_trigger_in_text(mock_on, mock_predict):
 @patch.object(light_manager.LightManager, "on")
 def test_invalid_command(mock_on, mock_predict):
     tts = mock.Mock()
-    device = audio_client.Device(1, 48000)
+    device = audio_device.Device(1, 48000)
     client = audio_client.AudioClient(device=device)
     text_queue = queue.Queue()
     text_queue.put("Hey, Bob!")

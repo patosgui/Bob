@@ -1,3 +1,4 @@
+import audio_recorder
 import audio_client
 import logging
 
@@ -11,4 +12,4 @@ logging.basicConfig(
 )
 
 audio_device = audio_client.get_device(device_name="PowerConf S3")
-audio_client.AudioRecorder(device=audio_device).record()
+audio_recorder.AudioRecorder(device=audio_device).record()

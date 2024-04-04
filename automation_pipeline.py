@@ -1,4 +1,5 @@
 import audio_client
+import audio_device
 import threading
 import command_processor
 import logging
@@ -36,19 +37,16 @@ class Logger(command_processor.Debug):
         logging.info(f"** Inference result: {result}")
 
 
-def start_pipeline(audio_device: audio_client.Device | str, log: Logger):
+def start_pipeline(audio_dev: audio_device.Device | str, log: Logger):
 
     audio_channel = audio_client.LocalAudioChannel()
 
     # Prepare the audio capture thread
     client = None
     audio_capture_thread = None
-    if isinstance(audio_device, audio_client.Device):
+    if isinstance(audio_dev, audio_device.Device):
         client = audio_client.AudioClient(
-            device=audio_device,
-            is_multilingual=False,
-            lang="en",
-            translate=True,
+            device=audio_dev, is_multilingual=False, lang="en", translate=True
         )
 
         audio_capture_thread = threading.Thread(
@@ -60,7 +58,7 @@ def start_pipeline(audio_device: audio_client.Device | str, log: Logger):
         )
 
         audio_capture_thread = threading.Thread(
-            target=client.read_wav_file, args=(audio_channel, audio_device)
+            target=client.read_wav_file, args=(audio_channel, audio_dev)
         )
 
     # The text queue used to pass data from the TranscriptionServer for further

@@ -2,7 +2,7 @@
 
 import argparse
 import logging
-import audio_client
+import audio_device
 import automation_pipeline
 
 
@@ -40,13 +40,11 @@ if __name__ == "__main__":
     )
 
     if args.input_source == "microphone":
-        audio_device = audio_client.get_device(device_name=args.device)
+        audio_dev = audio_device.get_device(device_name=args.device)
         automation_pipeline.start_pipeline(
-            audio_device=audio_device, log=automation_pipeline.Logger(logging)
+            audio_device=audio_dev, log=automation_pipeline.Logger(logging)
         )
     elif args.input_source == "wav":
-        # elif args.input_source == 'wav':
-        #    audio_device = audio_client.get_device(device_name=args.wav_file)
         automation_pipeline.start_pipeline(
-            audio_device=args.wav_file, log=automation_pipeline.Logger(logging)
+            audio_dev=args.wav_file, log=automation_pipeline.Logger(logging)
         )

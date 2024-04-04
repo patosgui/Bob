@@ -1,5 +1,5 @@
 import audio_client
-import pyaudio
+import audio_device
 import numpy as np
 
 from unittest import mock
@@ -11,7 +11,7 @@ def test_audio_client_initialization():
     Test conversion from device with sample rate as 48kHz to 16kHz
     """
 
-    device = audio_client.Device(1, 48000)
+    device = audio_device.Device(1, 48000)
     client = audio_client.AudioClient(device=device)
 
     audio_channel = audio_client.LocalAudioChannel()
@@ -40,7 +40,7 @@ def test_reproduce(mock_pyaudio):
     Test that reproducing audio at 48Khz from a wav sampled at 16kHz works
     """
 
-    device = audio_client.Device(1, 48000)
+    device = audio_device.Device(1, 48000)
     client = audio_client.AudioClient(device=device)
 
     mock_instance = mock_pyaudio.return_value
