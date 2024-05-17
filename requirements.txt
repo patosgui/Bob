@@ -18,3 +18,4 @@ whisper-live
 TTS>=0.22.0
 faster-whisper>=0.10
 pre-commit
+invoke

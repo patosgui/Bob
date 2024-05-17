@@ -1,11 +1,6 @@
-import logging
-
-# from govee_api_laggat import Govee
 from phue import Bridge
 from dataclasses import dataclass
-from typing import List
-
-# import govee_api_laggat
+from typing import Any
 
 
 @dataclass
@@ -36,7 +31,7 @@ class LightManager:
         self.bridge.connect()
 
     @property
-    def status(self) -> List[Light]:
+    def status(self) -> dict[Any, Light]:
         lights = {}
         for light in self.bridge.lights:
             lights[light.light_id] = Light(light.name, light.light_id, light.on)
@@ -49,17 +44,6 @@ class LightManager:
             lights_by_id[light_id].on = value
         except KeyError as e:
             raise LightNotFound("Light with id {id} could not be found!") from e
-
-    async def set_light_on(self):
-        async with Govee(self.govee_api_key) as govee:
-            devices, err = await govee.get_devices()
-            for dev in devices:
-                # configure each device to turn on before seting brightness
-                dev.before_set_brightness_turn_on = True
-                dev.learned_set_brightness_max = 100
-                # turn and set bright
-                logging.info(f"Turning the light on (device: {dev})")
-                await govee.set_brightness(dev, 254)
 
     async def set_hue_light_off(self):
         self.bridge.set_light([1, 2, 3], "on", False)

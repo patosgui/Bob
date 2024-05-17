@@ -35,8 +35,8 @@ def test_ai_trigger(mock_on, mock_predict):
     first_call_args = mock_on.call_args_list[0][0]
     second_call_args = mock_on.call_args_list[1][0]
 
-    assert first_call_args[0] is 6 and first_call_args[1] is False
-    assert second_call_args[0] is 8 and second_call_args[1] is False
+    assert first_call_args[0] == 6 and first_call_args[1] is False
+    assert second_call_args[0] == 8 and second_call_args[1] is False
 
 
 @patch.object(audio_client.AudioClient, "reproduce", mock.Mock())

@@ -5,27 +5,20 @@ import audio_client
 import ai_engine
 import light_manager
 
-from abc import abstractmethod
-
 
 class Debug:
-    @abstractmethod
     def initializationOver(self):
         pass
 
-    @abstractmethod
     def gotText(self, text: str):
         pass
 
-    @abstractmethod
     def triggerAI(self):
         pass
 
-    @abstractmethod
     def processingCommand(self, text: str):
         pass
 
-    @abstractmethod
     def inferenceResult(self, result: str):
         pass
 
@@ -36,9 +29,9 @@ class CommandProcessor:
         tts,
         audio_client: audio_client.AudioClient,
         text_queue: queue.Queue,
+        debug: Debug = Debug(),
         ai_engine: ai_engine.AIEngine = ai_engine.AIEngine(),
         lm: light_manager.LightManager = light_manager.LightManager(),
-        debug: Debug = Debug(),
         trigger: str = "Bob",
     ) -> None:
         self.tts = tts
@@ -64,7 +57,7 @@ class CommandProcessor:
                 cmd = self.wait_for_new_data(timeout=10)
                 self.debug.processingCommand(cmd)
                 self.process(cmd)
-            except queue.Empty as e:
+            except queue.Empty:
                 # Ignore if command was not given
                 pass
 
