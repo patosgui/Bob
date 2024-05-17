@@ -1,9 +1,7 @@
-import re
 import queue
 
 import audio_client
-import ai_engine
-import light_manager
+from inference import ai_engine
 
 
 class Debug:
@@ -28,17 +26,15 @@ class CommandProcessor:
         self,
         tts,
         audio_client: audio_client.AudioClient,
+        ai_engine: ai_engine.AIEngine,
         text_queue: queue.Queue,
         debug: Debug = Debug(),
-        ai_engine: ai_engine.AIEngine = ai_engine.AIEngine(),
-        lm: light_manager.LightManager = light_manager.LightManager(),
         trigger: str = "Bob",
     ) -> None:
         self.tts = tts
         self.debug = debug
         self.trigger = trigger
         self.aie = ai_engine
-        self.lm = lm
         self.audio_client = audio_client
         self.text_queue = text_queue
 
@@ -56,7 +52,12 @@ class CommandProcessor:
                 # wait 10 second for a command
                 cmd = self.wait_for_new_data(timeout=10)
                 self.debug.processingCommand(cmd)
-                self.process(cmd)
+                answer = self.aie.analyze(cmd)
+                if answer and self.tts:
+                    wav = self.tts.tts(text=answer.content)
+                    self.audio_client.reproduce(
+                        wav, self.tts.synthesizer.output_sample_rate
+                    )
             except queue.Empty:
                 # Ignore if command was not given
                 pass
@@ -64,34 +65,6 @@ class CommandProcessor:
     def start(self):
         while True:
             self.process_once()
-
-    def process(self, cmd):
-        output = self.aie.predict(cmd, 180)
-        self.debug.inferenceResult(output)
-        # if "kitchen01" in output:
-        #    await lm.set_light_on()
-
-        if re.search("command.*entrance01.*on", output):
-            self.lm.on(7, True)
-
-        if re.search("command.*entrance01.*off", output):
-            self.lm.on(7, False)
-
-        if re.search("command.*office01.*on", output):
-            self.lm.on(6, True)
-            self.lm.on(8, True)
-
-        if re.search("command.*office01.*off", output):
-            self.lm.on(6, False)
-            self.lm.on(8, False)
-
-        if re.search("command.*livingroom01.*off", output):
-            self.lm.on(1, False)
-            self.lm.on(5, False)
-
-        if re.search("command.*livingroom01.*on", output):
-            self.lm.on(1, True)
-            self.lm.on(5, True)
 
     def wait_for_new_data(self, timeout=None):
         data = self.text_queue.get(timeout=timeout)

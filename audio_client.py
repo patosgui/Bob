@@ -53,7 +53,7 @@ class LocalAudioChannel(AudioChannel):
 class AudioClient:
     def __init__(
         self,
-        device: audio_device.Device,
+        device: audio_device.Device | None,
         is_multilingual: bool = False,
         lang: str | None = None,
         translate: bool = False,
@@ -136,6 +136,7 @@ class AudioClient:
 
         # Resample to target the 16kHz frequency for which the models
         # were trained
+        assert self.device
         resampled_data = librosa.resample(
             audio_array, orig_sr=self.device.sample_rate, target_sr=self.rate
         )
@@ -147,6 +148,7 @@ class AudioClient:
         Continuously capture data from the input device and stream it to the
         audio_channel
         """
+        assert self.device
         stream = self.p.open(
             format=self.format,
             channels=self.channels,

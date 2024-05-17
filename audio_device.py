@@ -2,7 +2,6 @@ import pyaudio
 import logging
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -26,7 +25,7 @@ def list_devices():
         logging.info(device_info)
 
 
-def get_device(device_name: str) -> Optional[Device]:
+def get_device(device_name: str) -> Device:
     """
     Get a Device object representing an audio device by name.
 

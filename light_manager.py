@@ -1,3 +1,5 @@
+import config
+
 from phue import Bridge
 from dataclasses import dataclass
 from typing import Any
@@ -17,11 +19,10 @@ class LightNotFound(Exception):
 class LightManager:
     def __init__(
         self,
-        govee_api_key: str = "72aa9b5d-2670-4d08-8b22-e8d0a48f7897",
         connect: bool = True,
     ):
-        self.govee_api_key = govee_api_key
-        self.bridge = Bridge("192.168.2.111")
+        assert config.bridge is not None
+        self.bridge = Bridge(config.bridge.ip)
         if connect:
             self.connect()
 

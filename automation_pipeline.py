@@ -2,17 +2,22 @@ import audio_client
 import audio_device
 import threading
 import command_processor
+import light_manager
+import config
 import logging
 import sys
 import time
 
 from queue import Queue
+from typing import Any
 
 from TTS.api import TTS
 from whisper_live.vad import VoiceActivityDetection
 
 # Based on whisper_live module
 from transcription_server import TranscriptionServer
+
+from inference import mistral, gpt2, ai_engine
 
 
 class Logger(command_processor.Debug):
@@ -63,7 +68,7 @@ def start_pipeline(audio_dev: audio_device.Device | str, log: Logger):
 
     # The text queue used to pass data from the TranscriptionServer for further
     # processing
-    text_queue = Queue()
+    text_queue: Queue[Any] = Queue()
 
     # Run the voice detection as a thread
     server = TranscriptionServer(
@@ -71,16 +76,25 @@ def start_pipeline(audio_dev: audio_device.Device | str, log: Logger):
         audio_channel=audio_channel,
         text_queue=text_queue,
     )
-    audio_receive_thread = threading.Thread(
-        target=server.recv_audio, daemon=True
-    )
+    audio_receive_thread = threading.Thread(target=server.recv_audio, daemon=True)
 
     # Prepare the command processor
     tts = TTS("tts_models/en/ljspeech/tacotron2-DDC").to("cpu")
+
+    aie: ai_engine.AIEngine | None = None
+
+    assert config.models
+    if config.models.ActionModel == config.ModelType.Mistral:
+        aie = mistral.MistralModel()
+    elif config.models.ActionModel == config.ModelType.GPT2:
+        aie = gpt2.GPT2LocalModel(light_manager.LightManager())
+    assert ai_engine
+
     cmd_process = command_processor.CommandProcessor(
         tts=tts,
         audio_client=client,
         text_queue=text_queue,
+        ai_engine=aie,
         debug=log,
         trigger="Bob",
     )
@@ -96,5 +110,5 @@ def start_pipeline(audio_dev: audio_device.Device | str, log: Logger):
         while True:
             # Wake up every 0.2 to catch Ctrl+C and terminate gracefully
             time.sleep(0.2)
-    except KeyboardInterrupt as e:
-        sys.exit(e)
+    except KeyboardInterrupt:
+        sys.exit(1)

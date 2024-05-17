@@ -4,15 +4,19 @@ import argparse
 import logging
 import audio_device
 import automation_pipeline
+import config
+
+from pathlib import Path
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Home automation bot")
     parser.add_argument(
-        "--api-key",
-        dest="api_key",
-        type=str,
-        default="72aa9b5d-2670-4d08-8b22-e8d0a48f7897",
+        "--config",
+        dest="config",
+        type=Path,
+        default=Path(__file__).parent / "config.yml",
+        help="The config file to use. By default it is expected to be in the same directory as this script",
     )
 
     subparsers = parser.add_subparsers(dest="input_source")
@@ -38,6 +42,9 @@ if __name__ == "__main__":
         handlers=[logging.StreamHandler()],
         force=True,
     )
+
+    # Set the global config
+    config.load_config(args.config)
 
     if args.input_source == "microphone":
         audio_dev = audio_device.get_device(device_name=args.device)

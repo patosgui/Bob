@@ -1,6 +1,5 @@
-env
 __pycache__
 gpt2/results
 log
-soilero.onnx
 .venv
+config.yml
