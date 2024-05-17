@@ -11,8 +11,10 @@ import uuid
 import logging
 import librosa
 
+
 from abc import ABC, abstractmethod
 from queue import Queue
+from typing import Any
 
 import audio_device
 
@@ -24,11 +26,11 @@ class AudioChannel(ABC):
     """
 
     @abstractmethod
-    def recv():
+    def recv(self):
         pass
 
     @abstractmethod
-    def send():
+    def send(self, message: Any):
         pass
 
 
@@ -40,7 +42,7 @@ class LocalAudioChannel(AudioChannel):
     def __init__(self):
         self.audio_queue = Queue()
 
-    def send(self, message):
+    def send(self, message: Any):
         # Put the received data into a queue
         self.audio_queue.put_nowait(message)
 
@@ -53,7 +55,7 @@ class AudioClient:
         self,
         device: audio_device.Device,
         is_multilingual: bool = False,
-        lang: str = None,
+        lang: str | None = None,
         translate: bool = False,
     ):
         """
@@ -192,6 +194,8 @@ class AudioClient:
         float32_bytes = resampled_data.tobytes()
         stream.write(float32_bytes)
 
+        stream.close()
+
     def read_wav_file(self, audio_channel: AudioChannel, file_path):
         self.on_open(audio_channel=audio_channel)
 
@@ -203,9 +207,7 @@ class AudioClient:
         audio_array = AudioClient.bytes_to_float_array(wav)
 
         # Is this really required or does librosa make the downsampling?
-        resampled_data = librosa.resample(
-            audio_array, orig_sr=sr, target_sr=self.rate
-        )
+        resampled_data = librosa.resample(audio_array, orig_sr=sr, target_sr=self.rate)
 
         self.chunk = 2048
 

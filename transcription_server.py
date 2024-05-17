@@ -2,6 +2,7 @@ import time
 import threading
 import json
 import textwrap
+from typing import Any
 
 import logging
 
@@ -11,7 +12,6 @@ from websockets.sync.server import serve
 
 import torch
 import numpy as np
-import time
 import queue
 from whisper_live.vad import VoiceActivityDetection
 
@@ -34,7 +34,6 @@ class TranscriptionServer:
         vad_model (torch.Module): The voice activity detection model.
         vad_threshold (float): The voice activity detection threshold.
         clients (dict): A dictionary to store connected clients.
-        audio_channels (dict): A dictionary to store WebSocket connections.
         clients_start_time (dict): A dictionary to track client start times.
         max_clients (int): Maximum allowed connected clients.
         max_connection_time (int): Maximum allowed connection time in seconds.
@@ -43,16 +42,11 @@ class TranscriptionServer:
     RATE = 16000
     CHUNK_SIZE = 2048
 
-    def __init__(
-        self, vad_model: VoiceActivityDetection, audio_channel, text_queue
-    ):
+    def __init__(self, vad_model: VoiceActivityDetection, audio_channel, text_queue):
         # voice activity detection model
         self.vad_model = vad_model
         self.vad_threshold = 0.5
 
-        self.clients = {}
-        self.audio_channels = {}
-        self.clients_start_time = {}
         self.max_clients = 4
         # 24 hours
         self.max_connection_time = 86400
@@ -60,7 +54,7 @@ class TranscriptionServer:
 
         self.audio_channel = audio_channel
         # An internal queue to pass audio to the thread that transcribes it
-        self.audio_queue = queue.Queue()
+        self.audio_queue: queue.Queue[Any] = queue.Queue()
         # Where to write the transcribed text to
         self.text_queue = text_queue
 
@@ -79,9 +73,7 @@ class TranscriptionServer:
         wait_time = None
 
         for k, v in self.clients_start_time.items():
-            current_client_time_remaining = self.max_connection_time - (
-                time.time() - v
-            )
+            current_client_time_remaining = self.max_connection_time - (time.time() - v)
 
             if wait_time is None or current_client_time_remaining < wait_time:
                 wait_time = current_client_time_remaining
@@ -116,9 +108,7 @@ class TranscriptionServer:
         )
 
     def get_speech_probablity(self, frame_np):
-        return self.vad_model(
-            torch.from_numpy(frame_np.copy()), self.RATE
-        ).item()
+        return self.vad_model(torch.from_numpy(frame_np.copy()), self.RATE).item()
 
     def shouldTurnSpeechRecOff(self, speech_prob):
         if speech_prob < self.vad_threshold:
@@ -156,16 +146,16 @@ class TranscriptionServer:
         options = json.loads(options)
         logging.info(options)
 
-        client = self.client_provider(
+        # Start the transcription thread
+        ServeClient(
             audio_channel=self.audio_channel,
             multilingual=options["multilingual"],
             language=options["language"],
             task=options["task"],
-            uid=options["uid"],
+            client_uid=options["uid"],
+            audio_queue=self.audio_queue,
+            text_queue=self.text_queue,
         )
-
-        self.clients[self.audio_channel] = client
-        self.clients_start_time[self.audio_channel] = time.time()
 
         state = AudioStatus.WAIT_FOR_VOICE
         while True:
@@ -178,9 +168,7 @@ class TranscriptionServer:
                     logging.error(e)
                     return
 
-                logging.info(
-                    f"Audio frame - size: {len(frame_np)} prob: {speech_prob}"
-                )
+                logging.info(f"Audio frame - size: {len(frame_np)} prob: {speech_prob}")
 
                 if state == AudioStatus.LISTENING:
                     if self.shouldTurnSpeechRecOff(speech_prob):
@@ -200,31 +188,11 @@ class TranscriptionServer:
                         logging.info("Turning speech recognition on!")
                         state = AudioStatus.LISTENING
                         self.add_frames(frame_np)
-
-                elapsed_time = (
-                    time.time() - self.clients_start_time[self.audio_channel]
-                )
-                if elapsed_time >= self.max_connection_time:
-                    self.clients[self.audio_channel].disconnect()
-                    logging.warning(
-                        f"{self.clients[self.audio_channel]} Client disconnected due to overtime."
-                    )
-                    self.clients[self.audio_channel].cleanup()
-                    self.clients.pop(self.audio_channel)
-                    self.clients_start_time.pop(self.audio_channel)
-                    audio_channel.close()
-                    del audio_channel
-                    break
-            except TypeError as e:
+            except TypeError:
                 logging.error(frame_data)
             except Exception as e:
                 logging.error(e)
-                self.clients[audio_channel].cleanup()
-                self.clients.pop(audio_channel)
-                self.clients_start_time.pop(audio_channel)
                 logging.info("Connection Closed.")
-                logging.info(self.clients)
-                del audio_channel
                 break
 
     def run(self, host, port):
@@ -308,10 +276,7 @@ class ServeClient:
         self.frames = b""
         self.language = language if multilingual else "en"
         self.task = task
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.transcriber = WhisperModel(
-            "small", device="cpu", compute_type="float32"
-        )
+        self.transcriber = WhisperModel("small", device="cpu", compute_type="float32")
         self.timestamp_offset = 0.0
         self.frames_np = None
         self.frames_offset = 0.0
@@ -321,7 +286,9 @@ class ServeClient:
         self.t_start = None
         self.exit = False
         self.same_output_threshold = 0
-        self.show_prev_out_thresh = 5  # if pause(no output from whisper) show previous output for 5 seconds
+        self.show_prev_out_thresh = (
+            5  # if pause(no output from whisper) show previous output for 5 seconds
+        )
         self.add_pause_thresh = (
             3  # add a blank to segment list as a pause(no speech) for 3 seconds
         )
@@ -385,10 +352,7 @@ class ServeClient:
             frame_np (numpy.ndarray): The audio frame data as a NumPy array.
 
         """
-        if (
-            self.frames_np is not None
-            and self.frames_np.shape[0] > 45 * self.RATE
-        ):
+        if self.frames_np is not None and self.frames_np.shape[0] > 45 * self.RATE:
             self.frames_offset += 30.0
             self.frames_np = self.frames_np[int(30 * self.RATE) :]
         if self.frames_np is None:
@@ -425,9 +389,7 @@ class ServeClient:
             # no valid segment for the last 30 seconds from whisper
             if (
                 self.frames_np[
-                    int(
-                        (self.timestamp_offset - self.frames_offset) * self.RATE
-                    ) :
+                    int((self.timestamp_offset - self.frames_offset) * self.RATE) :
                 ].shape[0]
                 > 25 * self.RATE
             ):
@@ -448,9 +410,7 @@ class ServeClient:
                 # whisper transcribe with prompt
                 logging.info("Transcribing ")
                 float32_array = np.array(input_bytes, dtype=np.float32)
-                segments, info = self.transcriber.transcribe(
-                    float32_array, beam_size=5
-                )
+                segments, info = self.transcriber.transcribe(float32_array, beam_size=5)
                 print(
                     "Detected language '%s' with probability %f"
                     % (info.language, info.language_probability)
@@ -500,9 +460,7 @@ class ServeClient:
                     self.timestamp_offset + s.start,
                     self.timestamp_offset + min(duration, s.end),
                 )
-                self.transcript.append(
-                    {"start": start, "end": end, "text": text_}
-                )
+                self.transcript.append({"start": start, "end": end, "text": text_})
 
                 offset = min(duration, s.end)
 
@@ -515,10 +473,7 @@ class ServeClient:
 
         # if same incomplete segment is seen multiple times then update the offset
         # and append the segment to the list
-        if (
-            self.current_out.strip() == self.prev_out.strip()
-            and self.current_out != ""
-        ):
+        if self.current_out.strip() == self.prev_out.strip() and self.current_out != "":
             self.same_output_threshold += 1
         else:
             self.same_output_threshold = 0
@@ -526,8 +481,7 @@ class ServeClient:
         if self.same_output_threshold > 5:
             if (
                 not len(self.text)
-                or self.text[-1].strip().lower()
-                != self.current_out.strip().lower()
+                or self.text[-1].strip().lower() != self.current_out.strip().lower()
             ):
                 self.text.append(self.current_out)
                 self.transcript.append(

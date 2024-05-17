@@ -1,0 +1,2 @@
+[tool.blak]
+target-version = ['py310']
