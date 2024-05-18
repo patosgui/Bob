@@ -1,11 +1,10 @@
 import subprocess
-from pathlib import Path
 import threading
+from pathlib import Path
 
 
 def execute_command(cmd: list[str], timeout: int | None = None):
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
     timerObject = None
     try:
         if timeout:
@@ -33,7 +32,8 @@ cmd += ["--wav-file", str(test_dir / "test.wav")]
 
 out, err, exitCode = execute_command(cmd, timeout=20)
 
-assert (
-    "** Inference result:  Can you turn the office light on? #command: turn office01 on#"
-    in err.decode("utf-8")
-)
+err = err.decode("utf-8")
+print(err)
+
+assert "Turning light 6 on" in err
+assert "Turning light 8 on" in err

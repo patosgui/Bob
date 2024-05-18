@@ -1,8 +1,12 @@
-import config
-
-from phue import Bridge
+import logging
 from dataclasses import dataclass
 from typing import Any
+
+from phue import Bridge
+
+import config
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -40,6 +44,7 @@ class LightManager:
 
     def on(self, light_id: int, value: bool):
         # TODO Add a map from the abstract id to the actual id. Only need to be done when supporting multiple APIs
+        logging.info(f'Turning light {light_id} {"on" if value else "off"}')
         try:
             lights_by_id = self.bridge.get_light_objects(mode="id")
             lights_by_id[light_id].on = value
