@@ -44,7 +44,9 @@ class CommandProcessor:
         if self.trigger in text:
             try:
                 if self.tts:
-                    wav = self.tts.tts(text="Yes please.")
+                    wav = self.tts.tts(
+                        text="How can I help you?", language="en", speaker="male-en-2"
+                    )
                     self.audio_client.reproduce(
                         wav, self.tts.synthesizer.output_sample_rate
                     )
@@ -54,7 +56,9 @@ class CommandProcessor:
                 self.debug.processingCommand(cmd)
                 answer = self.aie.analyze(cmd)
                 if answer and self.tts:
-                    wav = self.tts.tts(text=answer.content)
+                    wav = self.tts.tts(
+                        text=answer.content, language="en", speaker="male-en-2"
+                    )
                     self.audio_client.reproduce(
                         wav, self.tts.synthesizer.output_sample_rate
                     )

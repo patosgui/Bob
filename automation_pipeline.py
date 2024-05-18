@@ -1,23 +1,22 @@
-import audio_client
-import audio_device
-import threading
-import command_processor
-import light_manager
-import config
 import logging
 import sys
+import threading
 import time
-
 from queue import Queue
 from typing import Any
 
 from TTS.api import TTS
 from whisper_live.vad import VoiceActivityDetection
 
+import audio_client
+import audio_device
+import command_processor
+import config
+import light_manager
+from inference import ai_engine, gpt2, mistral
+
 # Based on whisper_live module
 from transcription_server import TranscriptionServer
-
-from inference import mistral, gpt2, ai_engine
 
 
 class Logger(command_processor.Debug):
@@ -79,7 +78,7 @@ def start_pipeline(audio_dev: audio_device.Device | str, log: Logger):
     audio_receive_thread = threading.Thread(target=server.recv_audio, daemon=True)
 
     # Prepare the command processor
-    tts = TTS("tts_models/en/ljspeech/tacotron2-DDC").to("cpu")
+    tts = TTS("tts_models/multilingual/multi-dataset/your_tts").to("cpu")
 
     aie: ai_engine.AIEngine | None = None
 
