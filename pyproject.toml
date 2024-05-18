@@ -1,2 +1,6 @@
 [tool.blak]
 target-version = ['py310']
+
+[tool.ruff]
+select = ["I"]
+
