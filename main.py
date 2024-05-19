@@ -2,12 +2,11 @@
 
 import argparse
 import logging
-import audio_device
-import automation_pipeline
-import config
-
 from pathlib import Path
 
+import audio_device
+import automation_pipeline
+import config_schema
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Home automation bot")
@@ -43,15 +42,17 @@ if __name__ == "__main__":
         force=True,
     )
 
-    # Set the global config
-    config.load_config(args.config)
+    try:
+        cfg = config_schema.load_config(args.config)
+    except config_schema.ParsingError as e:
+        print(e)
 
     if args.input_source == "microphone":
         audio_dev = audio_device.get_device(device_name=args.device)
         automation_pipeline.start_pipeline(
-            audio_dev=audio_dev, log=automation_pipeline.Logger(logging)
+            audio_dev=audio_dev, log=automation_pipeline.Logger(logging), cfg=cfg
         )
     elif args.input_source == "wav":
         automation_pipeline.start_pipeline(
-            audio_dev=args.wav_file, log=automation_pipeline.Logger(logging)
+            audio_dev=args.wav_file, log=automation_pipeline.Logger(logging), cfg=cfg
         )

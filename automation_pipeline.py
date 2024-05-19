@@ -41,7 +41,9 @@ class Logger(command_processor.Debug):
         logging.info(f"** Inference result: {result}")
 
 
-def start_pipeline(audio_dev: audio_device.Device | str, log: Logger):
+def start_pipeline(
+    audio_dev: audio_device.Device | str, cfg: config.Config, log: Logger
+):
 
     audio_channel = audio_client.LocalAudioChannel()
 
@@ -80,13 +82,20 @@ def start_pipeline(audio_dev: audio_device.Device | str, log: Logger):
     # Prepare the command processor
     tts = TTS("tts_models/multilingual/multi-dataset/your_tts").to("cpu")
 
-    aie: ai_engine.AIEngine | None = None
+    # Prepare the light manager
+    lm: light_manager.LightManager | None = None
+    logging.info(cfg.accessories)
+    for accessory in cfg.accessories:
+        if isinstance(accessory, config.HueBridge):
+            lm = light_manager.LightManager()
+    assert lm
 
-    assert config.models
-    if config.models.ActionModel == config.ModelType.Mistral:
-        aie = mistral.MistralModel()
-    elif config.models.ActionModel == config.ModelType.GPT2:
-        aie = gpt2.GPT2LocalModel(light_manager.LightManager())
+    print(cfg)
+    aie: ai_engine.AIEngine | None = None
+    if isinstance(cfg.conversation_model, config.MistralModel):
+        aie = mistral.MistralModel(api_key=cfg.conversation_model.api_key, lm=lm)
+    elif isinstance(cfg.conversation_model, config.GPT2Model):
+        aie = gpt2.GPT2LocalModel(lm=light_manager.LightManager())
     assert ai_engine
 
     cmd_process = command_processor.CommandProcessor(

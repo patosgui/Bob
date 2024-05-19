@@ -23,10 +23,10 @@ class LightNotFound(Exception):
 class LightManager:
     def __init__(
         self,
+        ip: str | None = None,
         connect: bool = True,
     ):
-        assert config.bridge is not None
-        self.bridge = Bridge(config.bridge.ip)
+        self.bridge = Bridge(ip)
         if connect:
             self.connect()
 
