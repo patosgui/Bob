@@ -2,6 +2,8 @@
 # SDL2
 find_package(SDL2 REQUIRED)
 
+find_package(Boost COMPONENTS system REQUIRED)
+
 # string(STRIP "${SDL2_LIBRARIES}" SDL2_LIBRARIES)
 # 
 # message(STATUS "SDL2_INCLUDE_DIRS = ${SDL2_INCLUDE_DIRS}")
@@ -32,6 +34,6 @@ include(DefaultTargetOptions)
 
 target_include_directories(${TARGET} PRIVATE "${CMAKE_SOURCE_DIR}/whisper.cpp/examples")
 
-target_link_libraries(${TARGET} PRIVATE common common-sdl whisper ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${TARGET} PRIVATE common common-sdl whisper Boost::system ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS ${TARGET} RUNTIME)
