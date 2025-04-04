@@ -5,7 +5,7 @@ import time
 from queue import Queue
 from typing import Any
 
-from TTS.api import TTS
+from orpheus_cpp import OrpheusCpp
 from whisper_live.vad import VoiceActivityDetection
 
 import audio_client
@@ -80,7 +80,7 @@ def start_pipeline(
     audio_receive_thread = threading.Thread(target=server.recv_audio, daemon=True)
 
     # Prepare the command processor
-    tts = TTS("tts_models/multilingual/multi-dataset/your_tts").to("cpu")
+    tts = OrpheusCpp(verbose=False)
 
     # Prepare the light manager
     lm: light_manager.LightManager | None = None
@@ -96,6 +96,9 @@ def start_pipeline(
         aie = mistral.MistralModel(api_key=cfg.conversation_model.api_key, lm=lm)
     elif isinstance(cfg.conversation_model, config.GPT2Model):
         aie = gpt2.GPT2LocalModel(lm=light_manager.LightManager())
+    elif isinstance(cfg.conversation_model, config.ollama):
+        aie = mistral.MistralModel(api_key=cfg.conversation_model.api_key, lm=lm)
+
     assert ai_engine
 
     cmd_process = command_processor.CommandProcessor(

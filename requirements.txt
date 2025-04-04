@@ -30,7 +30,7 @@ commitizen==3.26.0
 confection==0.1.4
 contourpy==1.2.1
 coqpit==0.0.17
-ctranslate2==4.3.0
+ctranslate2==4.3.1
 cycler==0.12.1
 cymem==2.0.8
 Cython==3.0.10
@@ -126,6 +126,7 @@ nvidia-nvjitlink-cu12==12.4.127
 nvidia-nvtx-cu12==12.1.105
 onnxruntime==1.16.0
 openai-whisper==20231117
+openai==1.68.2
 orjson==3.10.3
 oyaml==1.0
 packaging==23.2
@@ -211,3 +212,5 @@ whisper-live==0.4.1
 xxhash==3.4.1
 yarl==1.9.4
 zipp==3.18.2
+pyaudio==0.2.14
+setuptools

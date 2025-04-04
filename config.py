@@ -18,6 +18,11 @@ class HueBridge:
 
 
 @dataclass
+class Ollama:
+    pass
+
+
+@dataclass
 class Config:
-    conversation_model: GPT2Model | MistralModel
+    conversation_model: GPT2Model | MistralModel | Ollama
     accessories: List[HueBridge]

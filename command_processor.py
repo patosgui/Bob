@@ -1,5 +1,7 @@
 import queue
 
+import numpy as np
+
 import audio_client
 from inference import ai_engine
 
@@ -44,12 +46,15 @@ class CommandProcessor:
         if self.trigger in text:
             try:
                 if self.tts:
-                    wav = self.tts.tts(
-                        text="How can I help you?", language="en", speaker="male-en-2"
-                    )
-                    self.audio_client.reproduce(
-                        wav, self.tts.synthesizer.output_sample_rate
-                    )
+                    buffer = []
+                    text = "How can I help you?"
+                    for i, (sr, chunk) in enumerate(
+                        self.tts.stream_tts_sync(text, options={"voice_id": "tara"})
+                    ):
+                        buffer.append(chunk)
+                    buffer = np.concatenate(buffer, axis=1)
+                    # Check data type and range
+                    self.audio_client.reproduce(wav, 24000)
                 self.debug.triggerAI()
                 # wait 10 second for a command
                 cmd = self.wait_for_new_data(timeout=10)

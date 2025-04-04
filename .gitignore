@@ -1,5 +1,5 @@
 __pycache__
 gpt2/results
 log
-.venv
+**/.venv
 config.yml
