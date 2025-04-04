@@ -3,3 +3,4 @@ gpt2/results
 log
 **/.venv
 config.yml
+**/build
