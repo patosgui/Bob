@@ -52,9 +52,9 @@ class CommandProcessor:
                         self.tts.stream_tts_sync(text, options={"voice_id": "tara"})
                     ):
                         buffer.append(chunk)
-                    buffer = np.concatenate(buffer, axis=1)
+                    wav = np.concatenate(buffer, axis=1)
                     # Check data type and range
-                    self.audio_client.reproduce(wav, 24000)
+                    self.audio_client.reproduce(wav[0], 24000)
                 self.debug.triggerAI()
                 # wait 10 second for a command
                 cmd = self.wait_for_new_data(timeout=10)

@@ -4,17 +4,16 @@ related. This includes both capturing data from a source and reproducing it
 via e.g. a speaker.
 """
 
-import numpy as np
-import pyaudio
 import json
-import uuid
 import logging
-import librosa
-
-
+import uuid
 from abc import ABC, abstractmethod
 from queue import Queue
 from typing import Any
+
+import librosa
+import numpy as np
+import pyaudio
 
 import audio_device
 
@@ -185,7 +184,9 @@ class AudioClient:
             output_device_index=self.device.device_number,
             output=True,
         )
-        float32_array = np.array(wav, dtype=np.float32)
+
+        # normalize the wav to -1.0 to 1.0
+        float32_array = librosa.util.buf_to_float(wav, dtype=np.float32)
 
         resampled_data = librosa.resample(
             float32_array,
