@@ -8,6 +8,11 @@ class GPT2Model:
 
 
 @dataclass
+class FakeModel:
+    pass
+
+
+@dataclass
 class MistralModel:
     api_key: str
 

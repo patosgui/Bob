@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+pyaudio
+orpheus_cpp
+librosa
+phue
+langchain
+langchain_mistralai
+marshmallow
+orpheus-cpp
+llama-cpp-python
+pre-commit

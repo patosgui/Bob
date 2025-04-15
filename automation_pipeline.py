@@ -2,21 +2,23 @@ import logging
 import sys
 import threading
 import time
-from queue import Queue
-from typing import Any
 
+from fastapi import FastAPI
 from orpheus_cpp import OrpheusCpp
-from whisper_live.vad import VoiceActivityDetection
 
 import audio_client
 import audio_device
 import command_processor
 import config
+import global_vars
 import light_manager
-from inference import ai_engine, gpt2, mistral
+from inference import ai_engine, fake, mistral
+
+# from whisper_live.vad import VoiceActivityDetection
+from whisper_server.receiver import run_whisper_cpp
 
 # Based on whisper_live module
-from transcription_server import TranscriptionServer
+# from transcription_server import TranscriptionServer
 
 
 class Logger(command_processor.Debug):
@@ -67,17 +69,13 @@ def start_pipeline(
             target=client.read_wav_file, args=(audio_channel, audio_dev)
         )
 
-    # The text queue used to pass data from the TranscriptionServer for further
-    # processing
-    text_queue: Queue[Any] = Queue()
-
-    # Run the voice detection as a thread
-    server = TranscriptionServer(
-        vad_model=VoiceActivityDetection(),
-        audio_channel=audio_channel,
-        text_queue=text_queue,
-    )
-    audio_receive_thread = threading.Thread(target=server.recv_audio, daemon=True)
+    # # Run the voice detection as a thread
+    # server = TranscriptionServer(
+    #     vad_model=VoiceActivityDetection(),
+    #     audio_channel=audio_channel,
+    #     text_queue=text_queue,
+    # )
+    # audio_receive_thread = threading.Thread(target=server.recv_audio, daemon=True)
 
     # Prepare the command processor
     tts = OrpheusCpp(verbose=False)
@@ -94,17 +92,17 @@ def start_pipeline(
     aie: ai_engine.AIEngine | None = None
     if isinstance(cfg.conversation_model, config.MistralModel):
         aie = mistral.MistralModel(api_key=cfg.conversation_model.api_key, lm=lm)
-    elif isinstance(cfg.conversation_model, config.GPT2Model):
-        aie = gpt2.GPT2LocalModel(lm=light_manager.LightManager())
-    elif isinstance(cfg.conversation_model, config.ollama):
+    elif isinstance(cfg.conversation_model, config.Ollama):
         aie = mistral.MistralModel(api_key=cfg.conversation_model.api_key, lm=lm)
+    elif isinstance(cfg.conversation_model, config.Ollama):
+        aie = fake.FakeModel()
 
     assert ai_engine
 
     cmd_process = command_processor.CommandProcessor(
         tts=tts,
         audio_client=client,
-        text_queue=text_queue,
+        text_queue=global_vars.text_queue,
         ai_engine=aie,
         debug=log,
         trigger="Bob",
@@ -113,11 +111,17 @@ def start_pipeline(
 
     log.initializationOver()
 
-    threads = [audio_capture_thread, audio_receive_thread, cmd_process_thread]
+    threads = [cmd_process_thread]
 
     try:
         for t in threads:
             t.start()
+
+        # uvicorn needs to run in the main thread. Use asyncio for parallelism
+        # app = FastAPI(lifespan=lambda app : lifespan(app, text_queue=text_queue))
+        app = FastAPI()
+        run_whisper_cpp(app)
+
         while True:
             # Wake up every 0.2 to catch Ctrl+C and terminate gracefully
             time.sleep(0.2)

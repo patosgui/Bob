@@ -149,6 +149,8 @@ struct whisper_params {
     std::string language  = "en";
     std::string model     = "models/ggml-base.en.bin";
     std::string fname_out;
+
+    bool textual       = false;
 };
 
 void whisper_print_usage(int argc, char ** argv, const whisper_params & params);
@@ -182,6 +184,7 @@ static bool whisper_params_parse(int argc, char ** argv, whisper_params & params
         else if (arg == "-sa"   || arg == "--save-audio")    { params.save_audio    = true; }
         else if (arg == "-ng"   || arg == "--no-gpu")        { params.use_gpu       = false; }
         else if (arg == "-fa"   || arg == "--flash-attn")    { params.flash_attn    = true; }
+        else if (arg == "-te"   || arg == "--textual")       { params.textual       = true; }
 
         else {
             fprintf(stderr, "error: unknown argument: %s\n", arg.c_str());
@@ -348,6 +351,22 @@ int main(int argc, char ** argv) {
         if (!client.connect()) {
             return EXIT_FAILURE;
         }
+
+        // For texting purposes send text via websocket instead of voice.
+        if(params.textual) {
+            std::string input;
+            while(std::getline(std::cin,input))  {
+                if(input == "exit") {
+                    client.disconnect();
+                    exit(1);
+                }
+
+                std::string jsonMsg = makeJsonMessage("process", input);
+                client.sendMessage(jsonMsg);
+                input.clear();
+            }
+        }
+
         
         // main audio loop
         while (is_running) {

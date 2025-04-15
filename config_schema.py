@@ -27,9 +27,21 @@ class MistralSchema(Schema):
     api_key = fields.Str(required=True)
 
 
+class OllamaSchema(Schema):
+    # Use like: ollama: {}
+    pass
+
+
+class FakeModelSchema(Schema):
+    # Use like: ollama: {}
+    pass
+
+
 class ConversationalModelSchema(Schema):
     gpt2 = fields.Nested(GPT2Schema)
     mistral = fields.Nested(MistralSchema)
+    ollama = fields.Nested(OllamaSchema)
+    fake = fields.Nested(FakeModelSchema)
 
     @validates_schema
     def validate_numbers(self, data, **kwargs):
@@ -44,10 +56,15 @@ class ConfigSchema(Schema):
     @post_load
     def make_user(self, data, **kwargs):
         yaml_model = data["conversation_model"]
+        print(yaml_model)
         if "mistral" in yaml_model:
             model = MistralModel(yaml_model["mistral"]["api_key"])
         if "gpt2" in yaml_model:
             model = GPT2Model()
+        if "ollama" in yaml_model:
+            model = Ollama()
+        if "fake" in yaml_model:
+            model = FakeModel()
         assert model
 
         bridge = None

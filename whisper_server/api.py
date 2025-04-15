@@ -1,13 +1,15 @@
-# Python FastAPI WebSocket Server
-# Requirements: pip install fastapi uvicorn websockets
-
 import json
+from contextlib import asynccontextmanager
 from typing import List
 
-import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from starlette.requests import Request
 
-app = FastAPI()
+# Import the text_queue to communicate via test
+# Workaround for passing arguments to FastAPI endpoints
+import global_vars
+
+router = APIRouter()
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -32,7 +34,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 # WebSocket endpoint
-@app.websocket("/ws")
+@router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
@@ -47,17 +49,19 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Process the message (example)
                 if "command" in json_data:
                     if json_data["command"] == "process":
+                        msg = json_data.get("data", "No data")
                         result = {
                             "status": "success",
-                            "result": f"Processed: {json_data.get('data', 'No data')}",
+                            "result": f"Processed: {msg}",
                         }
+                        global_vars.text_queue.put(msg)
                     else:
                         result = {"status": "error", "message": "Unknown command"}
                 else:
                     result = {"status": "ack", "message": "Message received"}
 
                 # Send response back to the C++ client
-                await manager.send_message(json.dumps(result), websocket)
+                # await manager.send_message(json.dumps(result), websocket)
             except json.JSONDecodeError:
                 # If not JSON, just echo back
                 await manager.send_message(f"Echo: {data}", websocket)
@@ -68,12 +72,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 # Regular HTTP endpoint for testing
-@app.get("/")
+@router.websocket_route("/")
 async def get():
     return {"message": "WebSocket server is running. Connect to /ws endpoint."}
-
-
-if __name__ == "__main__":
-    print("Starting FastAPI WebSocket server on http://localhost:8000")
-    print("WebSocket endpoint available at ws://localhost:8000/ws")
-    uvicorn.run(app, host="0.0.0.0", port=8000)

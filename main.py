@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
+import asyncio
 import logging
+import sys
 from pathlib import Path
 
 import audio_device
@@ -46,6 +48,7 @@ if __name__ == "__main__":
         cfg = config_schema.load_config(args.config)
     except config_schema.ParsingError as e:
         print(e)
+        sys.exit(1)
 
     if args.input_source == "microphone":
         audio_dev = audio_device.get_device(device_name=args.device)
