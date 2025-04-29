@@ -89,11 +89,11 @@ public:
             ws.write(net::buffer(message));
             
             // Read the response
-            beast::flat_buffer buffer;
-            ws.read(buffer);
+            // beast::flat_buffer buffer;
+            // ws.read(buffer);
             
-            // Print the response
-            std::cout << "Response: " << beast::make_printable(buffer.data()) << std::endl;
+            // // Print the response
+            // std::cout << "Response: " << beast::make_printable(buffer.data()) << std::endl;
             return true;
         }
         catch(std::exception const& e) {
@@ -356,14 +356,17 @@ int main(int argc, char ** argv) {
         if(params.textual) {
             std::string input;
             while(std::getline(std::cin,input))  {
+                std::cout << "Input: " << input << std::endl;
                 if(input == "exit") {
                     client.disconnect();
                     exit(1);
                 }
 
                 std::string jsonMsg = makeJsonMessage("process", input);
+                std::cout << "Sending message: " << jsonMsg << std::endl;
                 client.sendMessage(jsonMsg);
                 input.clear();
+                std::cout << "Looping " << std::endl;
             }
         }
 

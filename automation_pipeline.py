@@ -124,6 +124,6 @@ def start_pipeline(
 
         while True:
             # Wake up every 0.2 to catch Ctrl+C and terminate gracefully
-            time.sleep(0.2)
+            time.sleep(0.01)
     except KeyboardInterrupt:
         sys.exit(1)

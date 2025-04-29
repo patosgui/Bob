@@ -23,6 +23,9 @@ class Debug:
         pass
 
 
+import logging
+
+
 class CommandProcessor:
     def __init__(
         self,
@@ -47,12 +50,14 @@ class CommandProcessor:
             try:
                 if self.tts:
                     buffer = []
+                    logging.info("Preppring TTS")
                     text = "How can I help you?"
                     for i, (sr, chunk) in enumerate(
                         self.tts.stream_tts_sync(text, options={"voice_id": "tara"})
                     ):
                         buffer.append(chunk)
                     wav = np.concatenate(buffer, axis=1)
+                    logging.info("Preppring TTS")
                     # Check data type and range
                     self.audio_client.reproduce(wav[0], 24000)
                 self.debug.triggerAI()

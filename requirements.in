@@ -10,3 +10,4 @@ marshmallow
 orpheus-cpp
 llama-cpp-python
 pre-commit
+openai
