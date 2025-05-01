@@ -5,3 +5,5 @@ log
 config.yml
 **/build
 **/.cache
+.github
+.vscode
