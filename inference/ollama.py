@@ -118,7 +118,6 @@ class Ollama(AIEngine):
                         return "Error calling function"
 
                     # Continue the conversation
-                    # messages.append(model_response.message.model_dump())
                     print(f"Function call result: {result}")
                     assert isinstance(result, str)
                     messages.append(
@@ -137,12 +136,12 @@ class Ollama(AIEngine):
                         }
                     )
 
-            print(messages)
             response = self.client.chat.completions.create(
                 model="llama3.2",
                 messages=messages,
                 tools=self.tools,
             )
+
             return self.recurse_function_call(response.choices[0], messages)
 
         return choice.message.content
