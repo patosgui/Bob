@@ -7,8 +7,8 @@ phue
 langchain
 langchain_mistralai
 marshmallow
-orpheus-cpp
 llama-cpp-python
 pre-commit
 openai
 pip-tools
+kokoro

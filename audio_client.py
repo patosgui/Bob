@@ -186,10 +186,11 @@ class AudioClient:
         )
 
         # normalize the wav to -1.0 to 1.0
-        float32_array = librosa.util.buf_to_float(wav, dtype=np.float32)
+        # float32_array = librosa.util.buf_to_float(wav, dtype=np.float32)
 
+        # wav -> float32 data between -1.0 and 1.0
         resampled_data = librosa.resample(
-            float32_array,
+            wav,
             orig_sr=sample_rate,
             target_sr=self.device.sample_rate,
         )

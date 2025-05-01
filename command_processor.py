@@ -1,6 +1,7 @@
 import queue
 
 import numpy as np
+from kokoro import KPipeline
 
 import audio_client
 from inference import ai_engine
@@ -43,19 +44,18 @@ class CommandProcessor:
         self.audio_client = audio_client
         self.text_queue = text_queue
 
-    def reproduce_audio(self, text : str):
+    def reproduce_audio(self, text: str):
+        pipeline = KPipeline(lang_code="a")
+        generator = pipeline(text, voice="am_adam", speed=1)
+
         logging.info("--- Running TTS inference:  ---")
         logging.info(f"Text: {text}")
-        buffer = []
-        for i, (sr, chunk) in enumerate(
-            self.tts.stream_tts_sync(text, options={"voice_id": "tara"})
-        ):
-            buffer.append(chunk)
-        wav = np.concatenate(buffer, axis=1)
+
+        # Only support one audio/chunk but that seems to work
+        for i, (gs, ps, audio) in enumerate(generator):
+            self.audio_client.reproduce(audio.numpy(), 24000)
+
         logging.info("--- Finished TTS inference ---")
-        # Check data type and range
-        self.audio_client.reproduce(wav[0], 24000)
-        return 
 
     def process_once(self):
         text = self.wait_for_new_data()
