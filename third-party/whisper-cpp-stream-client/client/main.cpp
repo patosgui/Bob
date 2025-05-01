@@ -344,32 +344,38 @@ int main(int argc, char ** argv) {
         std::string port = "8000";
         std::string endpoint = "/ws";
         
-        // Create the WebSocket client
-        WebSocketClient client(host, port, endpoint);
-        
-        // Connect to the WebSocket server
-        if (!client.connect()) {
-            return EXIT_FAILURE;
-        }
-
+ 
         // For texting purposes send text via websocket instead of voice.
         if(params.textual) {
             std::string input;
             while(std::getline(std::cin,input))  {
                 std::cout << "Input: " << input << std::endl;
                 if(input == "exit") {
-                    client.disconnect();
                     exit(1);
+                }
+
+                // Create the WebSocket client
+                WebSocketClient client(host, port, endpoint);
+
+                if (!client.connect()) {
+                    return EXIT_FAILURE;
                 }
 
                 std::string jsonMsg = makeJsonMessage("process", input);
                 std::cout << "Sending message: " << jsonMsg << std::endl;
                 client.sendMessage(jsonMsg);
+
+                client.disconnect();
+
                 input.clear();
                 std::cout << "Looping " << std::endl;
             }
         }
 
+        // Connect to the WebSocket server
+        // if (!client.connect()) {
+        //     return EXIT_FAILURE;
+        // }
         
         // main audio loop
         while (is_running) {
@@ -524,7 +530,7 @@ int main(int argc, char ** argv) {
 
                             // Example: Send messages to the Python server
                             std::string jsonMsg = makeJsonMessage("process", output.c_str());
-                            client.sendMessage(text);
+                            // client.sendMessage(text);
 
                             if (params.fname_out.length() > 0) {
                                 fout << output;
