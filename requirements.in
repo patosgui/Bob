@@ -11,3 +11,4 @@ orpheus-cpp
 llama-cpp-python
 pre-commit
 openai
+pip-tools
