@@ -23,38 +23,30 @@ from inference.ai_engine import AIEngine
 # )
 # print(response.choices[0].message.content)
 
-
-def add_two_numbers(a: int, b: int) -> int:
-    """
-    Add two numbers
-
-    Args:
-      a: The first integer number
-      b: The second integer number
-
-    Returns:
-      int: The sum of the two numbers
-    """
-    return a + b
-
+# Workaround llm tool calls and having a self
+internal_lm = None
 
 def turn_light_on(location: int) -> str:
-    """
-    Turns on the light in a room.
-
-    Args:
-        location: The room to the the light on. 0 for the office and 1 for the living room
-    """
-    # assert internal_lm is not None
     location = int(location)
-    if location == 0:
-        return "Light in the office is turned on"
-        # internal_lm.on(6, True)
-        # internal_lm.on(8, True)
-    elif location == 1:
-        return "Light in the living room is turned on"
-        # internal_lm.on(1, True)
-        # internal_lm.on(5, True)
+    if internal_lm is not None:
+        if location == 0:
+            internal_lm.on(6, True)
+            internal_lm.on(8, True)
+        elif location == 1:
+            internal_lm.on(1, True)
+            internal_lm.on(5, True)
+    return "Success!"
+
+def turn_light_off(location: int) -> None:
+    location = int(location)
+    if internal_lm is not None:
+        if location == 0:
+            internal_lm.on(6, False)
+            internal_lm.on(8, False)
+        elif location == 1:
+            internal_lm.on(1, False)
+            internal_lm.on(5, False)
+    return "Success!"
 
 
 class Ollama(AIEngine):
@@ -62,6 +54,8 @@ class Ollama(AIEngine):
     tools: list[dict]
 
     def __init__(self, lm=None):
+        global internal_lm
+        internal_lm = lm
 
         self.client = OpenAI(
             base_url="http://localhost:11434/v1",
@@ -73,7 +67,7 @@ class Ollama(AIEngine):
                 "type": "function",
                 "function": {
                     "name": "turn_light_on",
-                    "description": "Turns on the light in a room.",
+                    "description": "This function has smart home capabilities and it can turn on the lights in different divisions of the house.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -83,7 +77,24 @@ class Ollama(AIEngine):
                             }
                         },
                         "required": ["location"],
-                        "additionalProperties": False,
+                    },
+                    "strict": True,
+                },
+            }, 
+            {
+                "type": "function",
+                "function": {
+                    "name": "turn_light_off",
+                    "description": "This function has smart home capabilities and it can turn off the lights in different divisions of the house.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "int",
+                                "description": "The room to the the light off. 0 for the office and 1 for the living room",
+                            }
+                        },
+                        "required": ["location"],
                     },
                     "strict": True,
                 },
@@ -94,6 +105,7 @@ class Ollama(AIEngine):
         if choice.finish_reason == "tool_calls":
             available_function = {
                 "turn_light_on": turn_light_on,
+                "turn_light_off": turn_light_off,
             }
 
             # Append the answer from the model to which tool_call_id matches to.
@@ -118,7 +130,7 @@ class Ollama(AIEngine):
                         return "Error calling function"
 
                     # Continue the conversation
-                    print(f"Function call result: {result}")
+                    logging.info(f"Function call result: {result}")
                     assert isinstance(result, str)
                     messages.append(
                         {
@@ -142,15 +154,20 @@ class Ollama(AIEngine):
                 tools=self.tools,
             )
 
+            #print(messagese)
             return self.recurse_function_call(response.choices[0], messages)
 
+
+        for message in messages:
+            print(message)
         return choice.message.content
 
     def analyze(self, sequence: str, max_length: int | None = None) -> None:
+        logging.info(f"Analyzing sequence: {sequence}")
         messages = [
             {
                 "role": "system",
-                "content": "You are a helpful home assistant. You should give a direct answer to the user when the question is not related with home automation.",
+                "content": "You are a helpful home assistant." 
             },
             {"role": "user", "content": f"{sequence}"},
         ]
@@ -172,30 +189,6 @@ if __name__ == "__main__":
         force=True,
     )
 
-    # response = ollama.client.chat.completions.create(
-    #  model="llama3.1",
-    #  messages=[
-    #      {"role": "system", "content": "You are a helpful assistant."},
-    #      {"role": "user", "content": "Who won the world series in 2020?"},
-    #      {"role": "assistant", "content": "The LA Dodgers won in 2020."},
-    #      {"role": "user", "content": "Where was it played?"},
-    #  ],
-    # )
-    # print(response)
-    # print(response.choices[0].message.content)
-
-    # response = ollama.client.chat.completions.create(
-    #         model="llama3.1",
-    #         messages=[
-    #             {"role": "user", "content": "Can you turn the light on in the office?"}
-    #         ],
-    #         tools=ollama.tools,
-    #     )
-
-    # print("-----------------")
-
-    # print(response)
     ol = Ollama(lm=None)
     print(ol.analyze(sequence="Can you turn the light on in the office?"))
-
-    # print(completion.choices[0].message.content)
+    #print(ol.analyze(sequence="Can you turn the light in the office on?"))

@@ -1,5 +1,5 @@
 import json
-from contextlib import asynccontextmanager
+import logging
 from typing import List
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -41,7 +41,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             # Receive message from C++ client
             data = await websocket.receive_text()
-            print(f"Message received from C++ client: {data}")
+            logging.info(f"Message received from C++ client: {data}")
 
             # Parse JSON message
             try:
@@ -68,7 +68,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-        print("Client disconnected")
+        logging.info("Client disconnected")
 
 
 # Regular HTTP endpoint for testing

@@ -12,7 +12,7 @@ import command_processor
 import config
 import global_vars
 import light_manager
-from inference import ai_engine, fake, mistral
+from inference import ai_engine, ollama, mistral
 
 # from whisper_live.vad import VoiceActivityDetection
 from whisper_server.receiver import run_whisper_cpp
@@ -93,9 +93,7 @@ def start_pipeline(
     if isinstance(cfg.conversation_model, config.MistralModel):
         aie = mistral.MistralModel(api_key=cfg.conversation_model.api_key, lm=lm)
     elif isinstance(cfg.conversation_model, config.Ollama):
-        aie = mistral.MistralModel(api_key=cfg.conversation_model.api_key, lm=lm)
-    elif isinstance(cfg.conversation_model, config.Ollama):
-        aie = fake.FakeModel()
+        aie = ollama.Ollama(lm=lm)
 
     assert ai_engine
 

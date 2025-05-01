@@ -43,35 +43,35 @@ class CommandProcessor:
         self.audio_client = audio_client
         self.text_queue = text_queue
 
+    def reproduce_audio(self, text : str):
+        logging.info("--- Running TTS inference:  ---")
+        logging.info(f"Text: {text}")
+        buffer = []
+        for i, (sr, chunk) in enumerate(
+            self.tts.stream_tts_sync(text, options={"voice_id": "tara"})
+        ):
+            buffer.append(chunk)
+        wav = np.concatenate(buffer, axis=1)
+        logging.info("--- Finished TTS inference ---")
+        # Check data type and range
+        self.audio_client.reproduce(wav[0], 24000)
+        return 
+
     def process_once(self):
         text = self.wait_for_new_data()
         self.debug.gotText(text)
         if self.trigger in text:
             try:
                 if self.tts:
-                    buffer = []
-                    logging.info("Preppring TTS")
-                    text = "How can I help you?"
-                    for i, (sr, chunk) in enumerate(
-                        self.tts.stream_tts_sync(text, options={"voice_id": "tara"})
-                    ):
-                        buffer.append(chunk)
-                    wav = np.concatenate(buffer, axis=1)
-                    logging.info("Preppring TTS")
-                    # Check data type and range
-                    self.audio_client.reproduce(wav[0], 24000)
+                    self.reproduce_audio("How can I help you?")
                 self.debug.triggerAI()
                 # wait 10 second for a command
                 cmd = self.wait_for_new_data(timeout=10)
                 self.debug.processingCommand(cmd)
                 answer = self.aie.analyze(cmd)
                 if answer and self.tts:
-                    wav = self.tts.tts(
-                        text=answer.content, language="en", speaker="male-en-2"
-                    )
-                    self.audio_client.reproduce(
-                        wav, self.tts.synthesizer.output_sample_rate
-                    )
+                    assert isinstance(answer, str)
+                    self.reproduce_audio(answer)
             except queue.Empty:
                 # Ignore if command was not given
                 pass
