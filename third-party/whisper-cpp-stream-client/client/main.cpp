@@ -226,6 +226,22 @@ void whisper_print_usage(int /*argc*/, char ** argv, const whisper_params & para
     fprintf(stderr, "\n");
 }
 
+void sendMessage(std::string text) {
+    std::string host = "localhost";
+    std::string port = "8000";
+    std::string endpoint = "/ws";
+    WebSocketClient client(host, port, endpoint);
+
+    if (!client.connect()) {
+        exit(EXIT_FAILURE);
+    }
+
+    std::string jsonMsg = makeJsonMessage("process",  text);
+    std::cout << "Sending message: " << jsonMsg << std::endl;
+    client.sendMessage(jsonMsg);
+    client.disconnect();
+}
+
 int main(int argc, char ** argv) {
     whisper_params params;
 
@@ -510,6 +526,8 @@ int main(int argc, char ** argv) {
                             printf("%s", text);
                             fflush(stdout);
 
+                            // sendMessage(text);
+
                             if (params.fname_out.length() > 0) {
                                 fout << text;
                             }
@@ -528,9 +546,16 @@ int main(int argc, char ** argv) {
                             printf("%s", output.c_str());
                             fflush(stdout);
 
-                            // Example: Send messages to the Python server
-                            std::string jsonMsg = makeJsonMessage("process", output.c_str());
-                            // client.sendMessage(text);
+                            WebSocketClient client(host, port, endpoint);
+
+                            if (!client.connect()) {
+                                return EXIT_FAILURE;
+                            }
+
+                            std::string jsonMsg = makeJsonMessage("process",  text);
+                            std::cout << "Sending message: " << jsonMsg << std::endl;
+                            client.sendMessage(jsonMsg);
+                            client.disconnect();
 
                             if (params.fname_out.length() > 0) {
                                 fout << output;
